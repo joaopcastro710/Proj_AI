@@ -70,9 +70,9 @@ def main():
                         if ring_count[player_turn] < 5:  # First phase: placing rings
                             rings.append((x, y, player_turn))
                             ring_count[player_turn] += 1
-                        elif ring_count[player_turn] == 5:
-                            ring_count[player_turn] += 1
-                            player_turn = 3 - player_turn
+                            if ring_count[player_turn] == 5:
+                                ring_count[player_turn] += 1
+                                player_turn = 3 - player_turn
                         else:
                             markers.append((x, y, player_turn))
                             player_turn = 3 - player_turn  # Toggle turn
