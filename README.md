@@ -1,2 +1,2 @@
 # Proj_AI
-Project for UC AI
+Project for UC IA
