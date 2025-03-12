@@ -22,9 +22,10 @@ markers = []
 
 # Initialize pygame
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT-200))
 pygame.display.set_caption("Yinsh!")
 font = pygame.font.SysFont("Courier", 14)
+font2 = pygame.font.SysFont("Courier", 20)
 
 def generate_board_positions():
     positions = []
@@ -54,12 +55,29 @@ def draw_board(player_turn):
                 pygame.draw.line(screen, LINE_COLOR, (x, y), (x + dx, y + dy), 1)
     if player_turn == 1:
         label = font.render("White", 1, (255,255,255))
-        screen.blit(label,(int(WIDTH/2-50),int(HEIGHT/15)))
+        screen.blit(label,(int(WIDTH/2-60),int(HEIGHT/15)))
     else:
         label = font.render("Black", 1, (0,0,0))
-        screen.blit(label,(int(WIDTH/2-50),int(HEIGHT/15)))
+        screen.blit(label,(int(WIDTH/2-60),int(HEIGHT/15)))
     label = font.render("playing...", 1, (255,255,255))
-    screen.blit(label,(int(WIDTH/2),int(HEIGHT/15)))
+    screen.blit(label,(int(WIDTH/2-10),int(HEIGHT/15)))
+
+    scorewhite = scoreblack = 5
+    for (ring_x, ring_y, player_ring) in rings:
+        if player_ring==1:
+            scorewhite-=1
+        else:
+            scoreblack-=1
+
+    label = font2.render(f"White {scorewhite} ", 1, (255,255,255))
+    screen.blit(label,(int(WIDTH/2-90),int(HEIGHT/10)))
+    label = font2.render(f"{scoreblack} Black", 1, (0,0,0))
+    screen.blit(label,(int(WIDTH/2),int(HEIGHT/10)))
+
+def draw_message(message, color):
+    label = font2.render(message, 1, color)
+    screen.blit(label,(int(WIDTH/2-6*len(message)),5))
+    pygame.display.update()
 
 def draw_pieces():
     # Draw rings
@@ -71,10 +89,6 @@ def draw_pieces():
     for x, y, player in markers:
         color = MARKER_COLOR_P1 if player == 1 else MARKER_COLOR_P2
         pygame.draw.circle(screen, color, (x, y), VERTEX_SPACING // 3)
-
-def check_5_line():
-    #Check if there are 5 markers of the same color aligned, if so remove a ring
-    0
 
 def player_move(mouse_x, mouse_y, player_turn): #If click is in my own ring, read another click. If click is in possible space, place ring and new marker there.
     #Move must be made in a straight line to a blank space, jumped markers must be flipped. Rules https://www.gipf.com/yinsh/index.html for specifics.
@@ -188,6 +202,48 @@ def get_vertices_in_line(start, end, margin=5): #returns path between start and 
     path.append(end)
     return path
 
+def check_5_line():
+    #Check if there are 5 markers of the same color aligned, if so remove a ring
+
+    directions = [ # list possible sequence directions
+        (VERTEX_SPACING, 0),
+        (VERTEX_SPACING // 2, int(VERTEX_SPACING * math.sqrt(3) / 2)),
+        (-VERTEX_SPACING // 2, int(VERTEX_SPACING * math.sqrt(3) / 2))
+    ]
+
+    marker_positions = {(x, y): player for (x, y, player) in markers} #extract marker positions by player
+
+    for (x, y, player) in markers: #for every marker
+        for dx, dy in directions: #and every direction
+            sequence = [(x, y)] #initialize an array with the markers in the line (already with the one we are iterating over in there)
+            for i in range(1, 5): #search for 4 more markers in a row in the direction we are iterating over
+                next_x, next_y = x + i * dx, y + i * dy #calculate next position
+                if (next_x, next_y) in marker_positions and marker_positions[(next_x, next_y)] == player: #if marker of the correct player is found keep going
+                    sequence.append((next_x, next_y))
+                else: #if marker is not found stop and go next direction/marker combo
+                    break
+
+            '''TODO In case of multiple sequences player must be able to choose which sequence to select'''
+            if len(sequence) == 5: # if 5 consecutive markers are found
+                print(f"player {player} formed a line at {sequence}!")
+
+                # remove markers in the line
+                markers[:] = [m for m in markers if (m[0], m[1]) not in sequence]
+                # remove one ring of the player
+                draw_message("You made a sequence! Please eliminate one of your rings...",((255,255,255) if player==1 else (0,0,0)))
+                choosing = True
+                while choosing:
+                    for event in pygame.event.get():
+                        if event.type == pygame.MOUSEBUTTONDOWN:
+                            mouse_x, mouse_y = pygame.mouse.get_pos()
+                            for i, (ring_x, ring_y, ring_p) in enumerate(rings):  # see if there is a ring where I clicked
+                                if math.hypot(mouse_x - ring_x, mouse_y - ring_y) < VERTEX_SPACING // 2 and player==ring_p:
+                                    rings.pop(i)
+                                    choosing = False
+
+                return True
+
+    return False
 
 def main():
     clock = pygame.time.Clock()
@@ -215,6 +271,8 @@ def main():
                                     player_turn = 3 - player_turn
                         else: 
                             if player_move(mouse_x, mouse_y, player_turn): # calculate move
+                                print("turn")
+                                check_5_line()
                                 player_turn = 3 - player_turn  # switch turn
                         break
         
