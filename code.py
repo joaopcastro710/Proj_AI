@@ -72,6 +72,10 @@ def draw_pieces():
         color = MARKER_COLOR_P1 if player == 1 else MARKER_COLOR_P2
         pygame.draw.circle(screen, color, (x, y), VERTEX_SPACING // 3)
 
+def check_5_line():
+    #Check if there are 5 markers of the same color aligned, if so remove a ring
+    0
+
 def player_move(mouse_x, mouse_y, player_turn): #If click is in my own ring, read another click. If click is in possible space, place ring and new marker there.
     #Move must be made in a straight line to a blank space, jumped markers must be flipped. Rules https://www.gipf.com/yinsh/index.html for specifics.
     #When 5 straight markers are the same color they are removed from the board, together with a ring. First to remove 3 rings wins.
@@ -100,16 +104,22 @@ def player_move(mouse_x, mouse_y, player_turn): #If click is in my own ring, rea
                                 print("moving from " + str(ring_x) + "," + str(ring_y) + " to "+ str(x) + "," + str(y))
                                 # move ring
                                 path = get_vertices_in_line((ring_x, ring_y),(x, y))
-                                if path==[]:
+                                if path==[]: #path empty = move not good
                                     print("not a valid move")
-                                    markers.remove((ring_x, ring_y, player_turn))
+                                    markers.remove((ring_x, ring_y, player_turn)) #remove marker we placed
                                     return False
+                                else:
+                                    for (path_x, path_y) in path[1:]: #flip the markers in the path, except the one we just put down
+                                        for j, (marker_x, marker_y, marker_player) in enumerate(markers):
+                                            if (marker_x==path_x and marker_y==path_y):
+                                                markers[j] = (marker_x, marker_y, 3 - marker_player)
+                                print(markers)
                                 print(path)
                                 rings[i] = (x, y, ring_p)
                                 return True  # moved a ring
     return False  # didnt click a ring
 
-def get_vertices_in_line(start, end, margin=2): #returns path between start and end of move
+def get_vertices_in_line(start, end, margin=5): #returns path between start and end of move
     #margin is maximum number of pixels in the gap between expected (calculated with steps) vertex position and actual vertex position
     start_x, start_y = start
     end_x, end_y = end
@@ -122,25 +132,22 @@ def get_vertices_in_line(start, end, margin=2): #returns path between start and 
     step_x = 0
     step_y = 0
 
-    #BUG MOVING VERTICALLY OR CLOSE TO A DIAGONAL BUT NOT QUITE RIGHT BECAUSE THIS MATHEMATICAL VERIFICATION FAILS
     if abs(dy) <= margin:  # horizontal movement
-        step_x = VERTEX_SPACING
-        if dx < 0:
-            step_x = - VERTEX_SPACING
-    elif abs(dx) - abs(dy) * (2 / math.sqrt(3)) <= margin:  # left diagonal
+        step_x = VERTEX_SPACING * (-1 if dx < 0 else 1)
+    elif abs(dx) - int(abs(dy) * (2 / math.sqrt(3))) <= margin:  # diagonal
         step_x = VERTEX_SPACING // 2 * (-1 if dx < 0 else 1)
-        step_y = VERTEX_SPACING * math.sqrt(3) / 2 * (-1 if dy < 0 else 1)
-    elif abs(dx) <= margin:  # right diagonal
-        step_y = VERTEX_SPACING * math.sqrt(3) / 2 * (-1 if dy < 0 else 1)
-
+        step_y = int(VERTEX_SPACING * math.sqrt(3) / 2 * (-1 if dy < 0 else 1))
     else:
         return []  # not valid, not a straight line move
 
     current_x = start_x + step_x
     current_y = start_y + step_y
-    # check all positions along the line
+    outofbounds = False
+    jumped = False
+    # check all positions along the line between start vertex and end vertex
     while (abs(current_x - end_x) > margin or abs(current_y - end_y) > margin):
         # find closest vertex to calculated values with the step, if not inside margin yet
+        jumping = False
         closest_vertex = None
         closest_distance = max(WIDTH,HEIGHT)+1
 
@@ -150,13 +157,34 @@ def get_vertices_in_line(start, end, margin=2): #returns path between start and 
                 closest_distance = distance
                 closest_vertex = (x, y)
 
+        ''' We need to check if it jumped over a ring (invalid), if it jumped over more than one consecutive sequence of markers (invalid) and in case of a jump, if it landed exactly after a sequence of markers '''
         if closest_vertex and closest_distance <= margin: #if vertex inside margin its the next on the path
-            path.append(closest_vertex)
+            (vertex_x, vertex_y) = closest_vertex
+            for (ring_x, ring_y, player_ring) in rings:
+                if vertex_x==ring_x and vertex_y==ring_y: # found a ring, invalid move
+                    print("jumped over a ring")
+                    return []
+            
+            for (marker_x, marker_y, player_marker) in markers:
+                if vertex_x==marker_x and vertex_y==marker_y: # found a marker, a jump is performed
+                    jumping = True
+                    jumped = True
+                    break
+
+            if jumped and not jumping: #already jumped and tried to keep going without landing right after
+                print("tried to overjump")
+                return []
+            
+            path.append(closest_vertex) #valid move so far, added vertex to path
 
         current_x += step_x
         current_y += step_y
-        print(current_x, current_y)
 
+        if not (current_x<=WIDTH and current_y<=HEIGHT and current_x>=0 and current_y>=0): #Check if verification finds the final vertex to place the ring at
+            outofbounds = True
+            break
+    if outofbounds: #if it doesnt find the final vertex just return empty, not valid
+        return []
     path.append(end)
     return path
 
