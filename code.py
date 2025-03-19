@@ -202,7 +202,9 @@ def get_vertices_in_line(start, end, margin=5): #returns path between start and 
     path.append(end)
     return path
 
-def check_5_line():
+
+#If i do a sequence for my opponent i can remove my own ring, that cant happen. Also, if both players achieve a sequence in the same turn, the game must resolve both, not only one
+def check_5_line(player_turn):
     #Check if there are 5 markers of the same color aligned, if so remove a ring
 
     directions = [ # list possible sequence directions
@@ -212,6 +214,8 @@ def check_5_line():
     ]
 
     marker_positions = {(x, y): player for (x, y, player) in markers} #extract marker positions by player
+
+    sequences = []
 
     for (x, y, player) in markers: #for every marker
         for dx, dy in directions: #and every direction
@@ -226,24 +230,86 @@ def check_5_line():
             '''TODO In case of multiple sequences player must be able to choose which sequence to select'''
             if len(sequence) == 5: # if 5 consecutive markers are found
                 print(f"player {player} formed a line at {sequence}!")
+                sequences.append(sequence) #add sequence to a list
 
-                # remove markers in the line
-                markers[:] = [m for m in markers if (m[0], m[1]) not in sequence]
-                # remove one ring of the player
-                draw_message("You made a sequence! Please eliminate one of your rings...",((255,255,255) if player==1 else (0,0,0)))
-                choosing = True
-                while choosing:
-                    for event in pygame.event.get():
-                        if event.type == pygame.MOUSEBUTTONDOWN:
-                            mouse_x, mouse_y = pygame.mouse.get_pos()
-                            for i, (ring_x, ring_y, ring_p) in enumerate(rings):  # see if there is a ring where I clicked
-                                if math.hypot(mouse_x - ring_x, mouse_y - ring_y) < VERTEX_SPACING // 2 and player==ring_p:
-                                    rings.pop(i)
-                                    choosing = False
+    if (len(sequences)>0):
+        draw_board(player_turn) 
+        draw_pieces()
+        pygame.display.flip()
+        choosing = True
+        selected_sequence = None
 
-                return True
+        while choosing:
+            # display sequence numbers on the side
+            draw_message("You made a sequence! Choose which one to eliminate",((255,255,255) if player==1 else (0,0,0)))
+            font = pygame.font.Font(None, 36)
+            for idx, seq in enumerate(sequences):
+                text_color = (255, 255, 0) if selected_sequence == idx else (255, 255, 255) if player_turn == 1 else (0,0,0) # goes yellow when number is selected
+                text = font.render(str(idx + 1), True, text_color)
+                screen.blit(text, (50, 10 + idx * 40))
 
+            # highlight selected sequence
+            if selected_sequence is not None:
+                for (x, y) in sequences[selected_sequence]:  # iterate through selected sequence
+                    pygame.draw.circle(screen, (255, 0, 0), (x, y), VERTEX_SPACING // 3, 3)  # goes red when highlighted
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+
+                    for idx in range(len(sequences)): # check if a number is clicked
+                        if 50 <= mouse_x <= 80 and 10 + idx * 40 <= mouse_y <= 40 + idx * 40:
+                            draw_board(player_turn)
+                            draw_pieces()
+                            pygame.display.flip()
+                            if selected_sequence == idx:  
+                                # if already selected, confirm removal
+                                markers[:] = [m for m in markers if (m[0], m[1]) not in sequences[idx]] #eliminate markers
+                                draw_board(player_turn)
+                                draw_pieces()
+                                pygame.display.flip()
+                                draw_message("You made a sequence! Eliminate a ring",((255,255,255) if player==1 else (0,0,0)))
+                                choosing = True
+                                while choosing: #eliminate ring
+                                    for event in pygame.event.get():
+                                        if event.type == pygame.MOUSEBUTTONDOWN:
+                                            mouse_x, mouse_y = pygame.mouse.get_pos()
+                                            for i, (ring_x, ring_y, ring_p) in enumerate(rings):  # see if there is a ring where I clicked
+                                                if math.hypot(mouse_x - ring_x, mouse_y - ring_y) < VERTEX_SPACING // 2 and player==ring_p:
+                                                    rings.pop(i)
+                                                    choosing = False 
+                            else:
+                                # if not selected highlght it
+                                selected_sequence = idx
+        check_game_over() #game over check
+        return True
     return False
+
+def check_game_over():
+    count_white = 0
+    count_black = 0
+    game_over = False
+    for (_,_,color) in rings:
+        if color == 1:
+            count_white += 1
+        else:
+            count_black += 1
+    if count_white <= 2 and count_black <= 2:
+        draw_message("Game over, it's a draw", (255,255,0))
+        game_over = True
+    elif count_white <= 2:
+        draw_message("Game over, White wins", (255,255,255))
+        game_over = True
+    elif count_black <= 2:
+        draw_message("Game over, Black wins", (0,0,0))
+        game_over = True
+    while game_over:
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pygame.quit()
+                exit()
 
 def main():
     clock = pygame.time.Clock()
@@ -266,13 +332,16 @@ def main():
                                 rings.append((x, y, player_turn))
                                 print(rings)
                                 ring_count[player_turn] += 1
-                                if ring_count[player_turn] == 5:
-                                    ring_count[player_turn] += 1
+                                if ring_count[1] + ring_count[2] < 10:
                                     player_turn = 3 - player_turn
-                        else: 
+                                else:
+                                    player_turn = 3 - player_turn
+                        else:
+                            #game over check
+                            check_game_over()
                             if player_move(mouse_x, mouse_y, player_turn): # calculate move
                                 print("turn")
-                                check_5_line()
+                                check_5_line(player_turn)
                                 player_turn = 3 - player_turn  # switch turn
                         break
         
