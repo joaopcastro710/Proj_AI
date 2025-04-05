@@ -4,9 +4,21 @@ import math
 import random
 
 # Options
-RANDOM_BOT = False
+RANDOM_BOT = False #single player / dev start
 MINIMAX_BOT = False
 MC_BOT = False
+
+RANDOM_BOT1 = False #multiplayer, bot vs bot
+MINIMAX_BOT1 = False
+MC_BOT1 = False
+
+RANDOM_BOT2 = False
+MINIMAX_BOT2 = False
+MC_BOT2 = False
+
+DIFFICULTY1 = 2
+DIFFICULTY2 = 2
+
 BOT_COLOR = 1 #1 for white, 2 for black
 
 #BOT vs BOT mode
@@ -107,11 +119,12 @@ def draw_board(player_turn):
     if player_turn == 1:
         label = font.render("White", 1, (255,255,255))
         screen.blit(label,(int(WIDTH/2-60),int(HEIGHT/15)))
-    else:
+    elif player_turn == 2:
         label = font.render("Black", 1, (0,0,0))
         screen.blit(label,(int(WIDTH/2-60),int(HEIGHT/15)))
-    label = font.render("playing...", 1, (255,255,255))
-    screen.blit(label,(int(WIDTH/2-10),int(HEIGHT/15)))
+    if player_turn != None:
+        label = font.render("playing...", 1, (255,255,255))
+        screen.blit(label,(int(WIDTH/2-10),int(HEIGHT/15)))
 
     scorewhite = scoreblack = 5
     for (ring_x, ring_y, player_ring) in rings:
@@ -159,6 +172,70 @@ def draw_pieces():
         color = MARKER_COLOR_P1 if player == 1 else MARKER_COLOR_P2
         x, y = vertex_positions[(q, r)]  # Convert axial to pixel coordinates
         pygame.draw.circle(screen, color, (x, y), VERTEX_SPACING // 3)
+
+def draw_menu():
+    screen.fill((50, 50, 50))  # Background color
+
+    # Draw the board for aesthetics
+    draw_board(None)
+
+    # Menu title
+    title_font = pygame.font.SysFont("Courier", 36)
+    title_label = title_font.render("START GAME", True, (255, 215, 0))
+    screen.blit(title_label, (WIDTH // 2 - title_label.get_width() // 2, 20))
+
+    hint_label = font2.render("HINTS", True, (0, 255, 0) if HINTS else (255,0,0))
+    screen.blit(hint_label, (WIDTH // 2 - hint_label.get_width() // 2, 55))
+
+    hint_label = font2.render("LOAD GAME", True, (0, 0, 255))
+    screen.blit(hint_label, (WIDTH // 2 - hint_label.get_width() // 2, HEIGHT - 225))
+
+    # Player 1 slot
+    pygame.draw.rect(screen, (0, 128, 255), (WIDTH // 4 - 100, HEIGHT // 3, 200, 50))
+    if not (MC_BOT1 or MINIMAX_BOT1 or RANDOM_BOT1):
+        p1_label = font2.render("P1: Human", True, (255, 255, 255))
+    elif MC_BOT1:
+        p1_label = font2.render("P1: MC Bot", True, (255, 255, 255))
+    elif MINIMAX_BOT1:
+        p1_label = font2.render("P1: Minimax Bot", True, (255, 255, 255))
+    elif RANDOM_BOT1:
+        p1_label = font2.render("P1: Random Bot", True, (255, 255, 255))
+    screen.blit(p1_label, (WIDTH // 4 - p1_label.get_width() // 2, HEIGHT // 3 + 10))
+
+    # Player 2 slot
+    pygame.draw.rect(screen, (255, 69, 0), (3 * WIDTH // 4 - 100, HEIGHT // 3, 200, 50))
+    if not (MC_BOT2 or MINIMAX_BOT2 or RANDOM_BOT2):
+        p2_label = font2.render("P2: Human", True, (255, 255, 255))
+    elif MC_BOT2:
+        p2_label = font2.render("P2: MC Bot", True, (255, 255, 255))
+    elif MINIMAX_BOT2:
+        p2_label = font2.render("P2: Minimax Bot", True, (255, 255, 255))
+    elif RANDOM_BOT2:
+        p2_label = font2.render("P2: Random Bot", True, (255, 255, 255))
+    screen.blit(p2_label, (3 * WIDTH // 4 - p2_label.get_width() // 2, HEIGHT // 3 + 10))
+
+    # Difficulty buttons for Player 1
+    pygame.draw.rect(screen, (0, 255, 0) if DIFFICULTY1 == 1 else (128, 128, 128), (WIDTH // 4 - 100, HEIGHT // 3 + 70, 60, 30))
+    easy_label = font.render("Easy", True, (0, 0, 0))
+    screen.blit(easy_label, (WIDTH // 4 - 85, HEIGHT // 3 + 75))
+
+    pygame.draw.rect(screen, (255, 255, 0) if DIFFICULTY1 == 2 else (128, 128, 128), (WIDTH // 4 - 30, HEIGHT // 3 + 70, 60, 30))
+    medium_label = font.render("Medium", True, (0, 0, 0))
+    screen.blit(medium_label, (WIDTH // 4 - 25, HEIGHT // 3 + 75))
+
+    pygame.draw.rect(screen, (255, 0, 0) if DIFFICULTY1 == 3 else (128, 128, 128), (WIDTH // 4 + 40, HEIGHT // 3 + 70, 60, 30))
+    hard_label = font.render("Hard", True, (0, 0, 0))
+    screen.blit(hard_label, (WIDTH // 4 + 55, HEIGHT // 3 + 75))
+
+    # Difficulty buttons for Player 2
+    pygame.draw.rect(screen, (0, 255, 0) if DIFFICULTY2 == 1 else (128, 128, 128), (3 * WIDTH // 4 - 100, HEIGHT // 3 + 70, 60, 30))
+    screen.blit(easy_label, (3 * WIDTH // 4 - 85, HEIGHT // 3 + 75))
+
+    pygame.draw.rect(screen, (255, 255, 0) if DIFFICULTY2 == 2 else (128, 128, 128), (3 * WIDTH // 4 - 30, HEIGHT // 3 + 70, 60, 30))
+    screen.blit(medium_label, (3 * WIDTH // 4 - 25, HEIGHT // 3 + 75))
+
+    pygame.draw.rect(screen, (255, 0, 0) if DIFFICULTY2 == 3 else (128, 128, 128), (3 * WIDTH // 4 + 40, HEIGHT // 3 + 70, 60, 30))
+    screen.blit(hard_label, (3 * WIDTH // 4 + 55, HEIGHT // 3 + 75))
 
 def get_vertices_in_line(start, end, these_rings, these_markers):
     start_q, start_r = start
@@ -495,44 +572,43 @@ def apply_move(game_state, move):
 
     #print(game_state.rings, game_state.markers)
 
-    if MC_BOT:
-        sequences = []
+    sequences = []
 
-        directions = [  # List possible sequence directions
-            (2, 0),  # Horizontal
-            (1, 1),  # Diagonal /
-            (-1, 1),  # Diagonal \
-        ]
+    directions = [  # List possible sequence directions
+        (2, 0),  # Horizontal
+        (1, 1),  # Diagonal /
+        (-1, 1),  # Diagonal \
+    ]
 
-        #print("hello im simulating a move")
+    #print("hello im simulating a move")
 
-        marker_positions = {(q, r): player for (q, r, player) in game_state.markers}
+    marker_positions = {(q, r): player for (q, r, player) in game_state.markers}
 
-        for (q, r, player) in game_state.markers:  # For every marker
+    for (q, r, player) in game_state.markers:  # For every marker
 
-            for dq, dr in directions:  # And every direction
-                sequence = [(q, r)]  # Initialize an array with the markers in the line
-                for i in range(1, 5):  # Search for 4 more markers in a row in the direction
-                    next_q, next_r = q + i * dq, r + i * dr  # Calculate next position
-                    if (next_q, next_r) in marker_positions and marker_positions[(next_q, next_r)] == player:  # If marker of the correct player is found, keep going
-                        sequence.append((next_q, next_r))
-                    else:  # If marker is not found, stop and go to the next direction/marker combo
-                        break
+        for dq, dr in directions:  # And every direction
+            sequence = [(q, r)]  # Initialize an array with the markers in the line
+            for i in range(1, 5):  # Search for 4 more markers in a row in the direction
+                next_q, next_r = q + i * dq, r + i * dr  # Calculate next position
+                if (next_q, next_r) in marker_positions and marker_positions[(next_q, next_r)] == player:  # If marker of the correct player is found, keep going
+                    sequence.append((next_q, next_r))
+                else:  # If marker is not found, stop and go to the next direction/marker combo
+                    break
 
-                if len(sequence) == 5:  # If 5 consecutive markers are found
-                    # Mark all markers in the sequence as used
+            if len(sequence) == 5:  # If 5 consecutive markers are found
+                # Mark all markers in the sequence as used
 
-                    # Remove the markers in the sequence
-                    game_state.markers = [m for m in game_state.markers if (m[0], m[1]) not in sequence]
+                # Remove the markers in the sequence
+                game_state.markers = [m for m in game_state.markers if (m[0], m[1]) not in sequence]
 
-                    # Find rings of the player who made the sequence
-                    player_rings = [(i, ring_q, ring_r) for i, (ring_q, ring_r, ring_p) in enumerate(game_state.rings) if ring_p == player]
+                # Find rings of the player who made the sequence
+                player_rings = [(i, ring_q, ring_r) for i, (ring_q, ring_r, ring_p) in enumerate(game_state.rings) if ring_p == player]
 
-                    # Remove a random ring from the player who made the sequence
-                    if player_rings:
-                        i, ring_q, ring_r = random.choice(player_rings)
-                        game_state.rings.pop(i)
-                        #print(f"Player {player} formed a sequence and lost a ring at ({ring_q}, {ring_r})")
+                # Remove a random ring from the player who made the sequence
+                if player_rings:
+                    i, ring_q, ring_r = random.choice(player_rings)
+                    game_state.rings.pop(i)
+                    #print(f"Player {player} formed a sequence and lost a ring at ({ring_q}, {ring_r})")
     
     #print(game_state.rings, game_state.markers)
     #a = input()
@@ -541,9 +617,10 @@ def apply_move(game_state, move):
 
 def minimax_bot_move(game_state, depth=4): # Implement dynamic depth count
     #print("Bot is thinking...") #não desenha em condições
-    draw_message("Bot is thinking...", (255, 255, 255) if BOT_COLOR == 1 else (0, 0, 0))
+    draw_message("Bot is thinking...", (255, 255, 255) if MINIMAX_BOT1 and game_state.player_turn==1 else (0, 0, 0))
 
-    best_eval, best_move = minimax(game_state, depth, alpha=float('-inf'), beta=float('inf'), maximizing_player= (BOT_COLOR==1))
+    #check this too
+    best_eval, best_move = minimax(game_state, depth, alpha=float('-inf'), beta=float('inf'), maximizing_player= (MINIMAX_BOT1 and game_state.player_turn==1))
 
     print(best_eval)
 
@@ -582,7 +659,9 @@ def simulate_random_game(game_state):
                 break
 
     # Return wins: +1 for a win for the current player, -1 for a loss
-    if sum(1 for _, _, color in current_state.rings if color == BOT_COLOR) <= 2:  # Opponent has 2 or fewer rings
+    #check this
+    if (MC_BOT1 and game_state.player_turn==1 and sum(1 for _, _, color in current_state.rings if color == 1) <= 2) or \
+       (MC_BOT2 and game_state.player_turn==2 and sum(1 for _, _, color in current_state.rings if color == 2) <= 2):  # Check based on BOT_COLOR
         return 1  # BOT_COLOR wins
     else:
         return 0  # BOT_COLOR does not win
@@ -635,7 +714,7 @@ def mcts(game_state, iterations=700): #Implement dynamic iteration count
 
 def mcts_bot_move(game_state, iterations=700): # Implement dynamic iteration count
     #print("Bot is thinking...")
-    draw_message("Bot is thinking...", (255, 255, 255) if BOT_COLOR == 1 else (0, 0, 0))
+    draw_message("Bot is thinking...", (255, 255, 255) if MC_BOT1 and game_state.player_turn==1 else (0, 0, 0))
 
     best_move = mcts(game_state, iterations)
     #print(best_wins)
@@ -730,8 +809,11 @@ def check_5_line(player_turn):
                 draw_pieces()
                 draw_message("Both players made a sequence! Click to proceed", ((255, 255, 255) if player == 1 else (0, 0, 0)))
 
-            elif (RANDOM_BOT or MINIMAX_BOT or MC_BOT) and any(own == BOT_COLOR for _, own in sequences):
-                draw_message("The bot made a sequence! Click to proceed", ((255, 255, 255) if BOT_COLOR == 1 else (0, 0, 0)))
+            elif (RANDOM_BOT1 or MINIMAX_BOT1 or MC_BOT1 or RANDOM_BOT2 or MINIMAX_BOT2 or MC_BOT2) and any(
+                (own == 1 and (RANDOM_BOT1 or MINIMAX_BOT1 or MC_BOT1)) or 
+                (own == 2 and (RANDOM_BOT2 or MINIMAX_BOT2 or MC_BOT2)) 
+                for _, own in sequences):
+                draw_message("The bot made a sequence! Click to proceed", ((255, 255, 255) if (MC_BOT1 or RANDOM_BOT1 or MINIMAX_BOT1) else (0, 0, 0)))
 
             else:
                 font = pygame.font.Font(None, 36)
@@ -752,13 +834,13 @@ def check_5_line(player_turn):
                     mouse_x, mouse_y = pygame.mouse.get_pos()
                     if len(set(own for _, own in sequences)) == 1:  # If only one player made a sequence
                         only_player = sequences[0][1]
-                        if (RANDOM_BOT or MINIMAX_BOT or MC_BOT) and only_player == BOT_COLOR:
+                        if ((RANDOM_BOT1 or MINIMAX_BOT1 or MC_BOT1) and only_player == 1) or ((RANDOM_BOT2 or MINIMAX_BOT2 or MC_BOT2) and only_player == 2):
                             selected_sequence = random.choice([seq for seq, _ in sequences])
                             markers[:] = [m for m in markers if (m[0], m[1]) not in selected_sequence]
                             draw_board(player_turn)
                             draw_pieces()
                             pygame.display.flip()
-                            remove_ring(BOT_COLOR)
+                            remove_ring(only_player)
                             choosing = False
                         else:
                             for idx, (seq, own) in enumerate(sequences):
@@ -784,13 +866,13 @@ def check_5_line(player_turn):
                         selected_sequences = {1: None, 2: None}
 
                         for player in [1, 2]:
-                            if (RANDOM_BOT or MINIMAX_BOT or MC_BOT) and player == BOT_COLOR:
+                            if ((RANDOM_BOT1 or MINIMAX_BOT1 or MC_BOT1) and player == 1) or ((RANDOM_BOT2 or MINIMAX_BOT2 or MC_BOT2) and player == 2):
                                 selected_sequences[player] = random.choice(player_sequences[player])
                                 markers[:] = [m for m in markers if (m[0], m[1]) not in selected_sequences[player]]
                                 draw_board(player_turn)
                                 draw_pieces()
                                 pygame.display.flip()
-                                remove_ring(BOT_COLOR)
+                                remove_ring(player)
                                 continue
 
                             choosing = True
@@ -837,7 +919,7 @@ def check_5_line(player_turn):
 def remove_ring(player):
     draw_message("You made a sequence! Eliminate a ring", ((255, 255, 255) if player == 1 else (0, 0, 0)))
     while True:  # Eliminate ring
-        if player == BOT_COLOR and (RANDOM_BOT or MINIMAX_BOT or MC_BOT):  # Bot eliminates ring
+        if ((RANDOM_BOT1 or MINIMAX_BOT1 or MC_BOT1) and player == 1) or ((RANDOM_BOT2 or MINIMAX_BOT2 or MC_BOT2) and player == 2):  # Bot eliminates ring
             bot_rings = [(i, ring_q, ring_r) for i, (ring_q, ring_r, ring_p) in enumerate(rings) if ring_p == player]
 
             if bot_rings:
@@ -886,7 +968,7 @@ def check_game_over(player_turn, eval=False):
                 sys.exit()
 
 def main():
-    global bot_moves_played
+    global bot_moves_played, DIFFICULTY1, DIFFICULTY2, HINTS, RANDOM_BOT1, RANDOM_BOT2, MINIMAX_BOT1, MINIMAX_BOT2, MC_BOT1, MC_BOT2, HINTS, LOAD_GAME
     running = True
     phase1 = True
     player_turn = 1
@@ -896,7 +978,76 @@ def main():
     best_eval = 0
     best_move = "---"
 
+    while running:
+        draw_menu()  # Draw the menu
 
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+
+                # Check if Player 1 slot is clicked
+                if WIDTH // 4 - 100 <= mouse_x <= WIDTH // 4 + 100 and HEIGHT // 3 <= mouse_y <= HEIGHT // 3 + 50:
+                    if not (MC_BOT1 or MINIMAX_BOT1 or RANDOM_BOT1):
+                        RANDOM_BOT1 = True
+                    elif RANDOM_BOT1:
+                        RANDOM_BOT1 = False
+                        MINIMAX_BOT1 = True
+                    elif MINIMAX_BOT1:
+                        MINIMAX_BOT1 = False
+                        MC_BOT1 = True
+                    elif MC_BOT1:
+                        MC_BOT1 = False
+                    # Update Player 1 settings here (e.g., toggle between Human/Bot)
+
+                # Check if Player 2 slot is clicked
+                elif 3 * WIDTH // 4 - 100 <= mouse_x <= 3 * WIDTH // 4 + 100 and HEIGHT // 3 <= mouse_y <= HEIGHT // 3 + 50:
+                    if not (MC_BOT2 or MINIMAX_BOT2 or RANDOM_BOT2):
+                        RANDOM_BOT2 = True
+                    elif RANDOM_BOT2:
+                        RANDOM_BOT2 = False
+                        MINIMAX_BOT2 = True
+                    elif MINIMAX_BOT2:
+                        MINIMAX_BOT2 = False
+                        MC_BOT2 = True
+                    elif MC_BOT2:
+                        MC_BOT2 = False
+                    # Update Player 2 settings here (e.g., toggle between Human/Bot)
+
+                # Check if Player 1 difficulty buttons are clicked
+                elif WIDTH // 4 - 100 <= mouse_x <= WIDTH // 4 - 40 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
+                    DIFFICULTY1 = 1  # Easy
+                elif WIDTH // 4 - 30 <= mouse_x <= WIDTH // 4 + 30 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
+                    DIFFICULTY1 = 2  # Medium
+                elif WIDTH // 4 + 40 <= mouse_x <= WIDTH // 4 + 100 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
+                    DIFFICULTY1 = 3  # Hard
+
+                # Check if Player 2 difficulty buttons are clicked
+                elif 3 * WIDTH // 4 - 100 <= mouse_x <= 3 * WIDTH // 4 - 40 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
+                    DIFFICULTY2 = 1  # Easy
+                elif 3 * WIDTH // 4 - 30 <= mouse_x <= 3 * WIDTH // 4 + 30 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
+                    DIFFICULTY2 = 2  # Medium
+                elif 3 * WIDTH // 4 + 40 <= mouse_x <= 3 * WIDTH // 4 + 100 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
+                    DIFFICULTY2 = 3  # Hard
+
+                # Check if Start button is clicked
+                elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and 0 <= mouse_y <= 55:
+                    running = False  # Exit the menu and start the game
+
+                elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and 55 <= mouse_y <= 80:
+                    HINTS = not HINTS  # Toggle hints
+
+                elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and 575 <= mouse_y:
+                    LOAD_GAME = True
+                    running = False  # Exit the menu and start the game
+
+        pygame.display.update()
+                
+
+    running=True
 
     if LOAD_GAME:
         ring_count, player_turn = load_game_state()
@@ -914,10 +1065,9 @@ def main():
         draw_eval(board_eval)
         if HINTS:
             draw_bot_eval(best_eval, best_move)
-                    
 
 
-        if player_turn==BOT_COLOR and (RANDOM_BOT): # bot moves here as black
+        if (player_turn==1 and RANDOM_BOT1) or (player_turn==2 and RANDOM_BOT2): # bot moves here as black
             if not phase1:
                 random_bot_make_move(player_turn)
                 bot_moves_played += 1
@@ -946,7 +1096,7 @@ def main():
                     game_state.ring_count = ring_count
                     board_eval = (evaluate_board(game_state))
                     save_game_state(ring_count, player_turn)
-        elif player_turn == BOT_COLOR and MINIMAX_BOT:
+        elif (player_turn==1 and MINIMAX_BOT1) or (player_turn==2 and MINIMAX_BOT2):
             if not phase1:
                 game_state.rings = rings
                 game_state.markers = markers
@@ -954,8 +1104,17 @@ def main():
                 game_state.phase1 = phase1
                 game_state.ring_count = ring_count
                 board_eval = (evaluate_board(game_state))
-                print("depth", 3+int(bot_moves_played>6))
-                _, best_eval, best_move = minimax_bot_move(game_state, 3+int(bot_moves_played>6))
+                if (DIFFICULTY1==1 and MINIMAX_BOT1) or (DIFFICULTY2==1 and MINIMAX_BOT2):
+                    _, best_eval, best_move = minimax_bot_move(game_state, 1)
+                elif (DIFFICULTY1==2 and MINIMAX_BOT1) or (DIFFICULTY2==2 and MINIMAX_BOT2):
+                    _, best_eval, best_move = minimax_bot_move(game_state, 2)
+                elif (MINIMAX_BOT1 or RANDOM_BOT1 or MC_BOT1) and (MINIMAX_BOT2 or RANDOM_BOT2 or MC_BOT2):
+                    print("depth", 3+int(bot_moves_played>12))
+                    _, best_eval, best_move = minimax_bot_move(game_state, 3+int(bot_moves_played>12))
+                else:
+                    print("depth", 3+int(bot_moves_played>6))
+                    if (DIFFICULTY1==3 and MINIMAX_BOT1) or (DIFFICULTY2==3 and MINIMAX_BOT2):
+                        _, best_eval, best_move = minimax_bot_move(game_state, 3+int(bot_moves_played>12))
                 bot_moves_played += 1
                 print("bot moved")
                 check_5_line(player_turn)
@@ -986,7 +1145,7 @@ def main():
                     board_eval = (evaluate_board(game_state))
                     save_game_state(ring_count, player_turn)
 
-        elif player_turn == BOT_COLOR and MC_BOT:
+        elif (player_turn==1 and MC_BOT1) or (player_turn==2 and MC_BOT2):
             if not phase1:
                 game_state.rings = rings
                 game_state.markers = markers
@@ -1003,6 +1162,12 @@ def main():
                     iters = 800
                 else:
                     iters = 1000
+
+                if (DIFFICULTY1==1 and MC_BOT1) or (DIFFICULTY2==1 and MC_BOT2):
+                    iters = 100
+                elif (DIFFICULTY1==2 and MC_BOT1) or (DIFFICULTY2==2 and MC_BOT2):
+                    iters = 300
+                    
                 print("iterations:",iters)
                 mcts_bot_move(game_state, iterations=iters)
                 bot_moves_played += 1
@@ -1064,7 +1229,7 @@ def main():
                                 game_state.ring_count = ring_count
                                 board_eval = evaluate_board(game_state)
 
-                                if HINTS and not (RANDOM_BOT or MINIMAX_BOT or MC_BOT):
+                                if HINTS and not (RANDOM_BOT1 or MINIMAX_BOT1 or MC_BOT1 or RANDOM_BOT2 or MINIMAX_BOT2 or MC_BOT2):
                                     best_eval, best_move = minimax(game_state, 3, alpha=float('-inf'), beta=float('inf'), maximizing_player=(3-player_turn==1))
                     
                                 save_game_state(ring_count, player_turn)
