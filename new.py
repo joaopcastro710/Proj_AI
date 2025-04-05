@@ -31,6 +31,7 @@ VERTEX_ROWS = [
 
 rings = []
 markers = []
+bot_moves_played = 0
 
 # Initialize pygame
 pygame.init()
@@ -68,7 +69,7 @@ class MCNode:
     def is_expanded(self):
         return len(self.children)==len(get_valid_moves(self.game_state.player_turn, self.game_state.rings, self.game_state.markers))
     
-    def best_child(self, exploration_weight=1.0):
+    def best_child(self, exploration_weight=0.75):
         return max(self.children, key=lambda child: child.wins / child.visits + exploration_weight * math.sqrt(math.log(self.visits) / child.visits))
 
 
@@ -306,11 +307,8 @@ def bot_place_ring(player_turn):
 def count_marker_sequences(game_state, player):
     directions = [
         (2, 0),  # Horizontal
-        (-2, 0),  # Horizontal
         (1, 1),  # Diagonal /
         (-1, 1),  # Diagonal \
-        (-1, -1),  # Diagonal \
-        (1, -1),  # Diagonal \
     ]
 
     score = 0
@@ -342,9 +340,9 @@ def count_marker_sequences(game_state, player):
                 if len(sequence) == 2:
                     score += 1
                 elif len(sequence) == 3:
-                    score += 10  # Base score for 3-marker sequences
+                    score += 3  # Base score for 3-marker sequences
                 elif len(sequence) == 4:
-                    score += 30  # Higher score for 4-marker sequences
+                    score += 10  # Higher score for 4-marker sequences
                 elif len(sequence) >= 5:
                     score += 100  # Highest score for 5-marker sequences
 
@@ -442,22 +440,15 @@ def apply_move(game_state, move):
 
         directions = [  # List possible sequence directions
             (2, 0),  # Horizontal
-            (-2, 0),  
             (1, 1),  # Diagonal /
             (-1, 1),  # Diagonal \
-            (-1, -1),
-            (1, -1)  # Diagonal \
         ]
 
         #print("hello im simulating a move")
 
         marker_positions = {(q, r): player for (q, r, player) in game_state.markers}
 
-        used_markers = set()  # Keep track of markers already part of a sequence
-
         for (q, r, player) in game_state.markers:  # For every marker
-            if (q, r) in used_markers:  # Skip markers already part of a sequence
-                continue
 
             for dq, dr in directions:  # And every direction
                 sequence = [(q, r)]  # Initialize an array with the markers in the line
@@ -470,7 +461,6 @@ def apply_move(game_state, move):
 
                 if len(sequence) == 5:  # If 5 consecutive markers are found
                     # Mark all markers in the sequence as used
-                    used_markers.update(sequence)
 
                     # Remove the markers in the sequence
                     game_state.markers = [m for m in game_state.markers if (m[0], m[1]) not in sequence]
@@ -513,6 +503,7 @@ def minimax_bot_move(game_state, depth=4): # Implement dynamic depth count
 def simulate_random_game(game_state):
     #print("started a game")
     current_state = game_state.clone()
+    #print(current_state.rings, current_state.markers)
     while True:
         valid_moves = get_valid_moves(current_state.player_turn, current_state.rings, current_state.markers)
         if not valid_moves:
@@ -544,7 +535,7 @@ def mcts(game_state, iterations=700): #Implement dynamic iteration count
         # Step 1: Selection
         node = root
         while node.is_expanded() and node.children:
-            node = node.best_child()
+            node = node.best_child(exploration_weight=0.75)
 
         # Step 2: Expansion
         if not node.is_expanded():
@@ -577,8 +568,11 @@ def mcts(game_state, iterations=700): #Implement dynamic iteration count
         wins = child.wins
         win_rate = wins / visits if visits > 0 else 0
         print(f"Move: {move}, Visits: {visits}, Wins: {wins}, Win Rate: {win_rate:.2f}")
-    return (root.best_child(exploration_weight=0.5).move) if root.children else (None, 0)
-    #return max(root.children, key=lambda child: child.visits).move if root.children else (None, 0)
+    #return (root.best_child(exploration_weight=0.25).move) if root.children else (None, 0)
+    print("best move: ", max(root.children, key=lambda child: child.visits).move)
+    print("visits: ", max(root.children, key=lambda child: child.visits).visits)
+    print("wins: ", max(root.children, key=lambda child: child.visits).wins)
+    return max(root.children, key=lambda child: child.visits).move if root.children else (None, 0)
 
 def mcts_bot_move(game_state, iterations=700): # Implement dynamic iteration count
     #print("Bot is thinking...")
@@ -644,10 +638,7 @@ def check_5_line(player_turn):
     directions = [  # List possible sequence directions
         (2, 0),  # Horizontal
         (1, 1),  # Diagonal /
-        (-1, 1),  # Diagonal \
-        (-2, 0),
-        (-1, -1),  # Diagonal \
-        (1, -1)  # Diagonal \
+        (-1, 1)  # Diagonal \
     ]
 
     marker_positions = {(q, r): player for (q, r, player) in markers}  # Extract marker positions by player
@@ -836,6 +827,7 @@ def check_game_over(player_turn, eval=False):
                 sys.exit()
 
 def main():
+    global bot_moves_played
     running = True
     phase1 = True
     player_turn = 1
@@ -856,6 +848,7 @@ def main():
         if player_turn==BOT_COLOR and (RANDOM_BOT): # bot moves here as black
             if not phase1:
                 random_bot_make_move(player_turn)
+                bot_moves_played += 1
                 check_5_line(player_turn)
                 player_turn = 3 - player_turn
                 game_state.rings = rings
@@ -887,7 +880,9 @@ def main():
                 game_state.phase1 = phase1
                 game_state.ring_count = ring_count
                 board_eval = (evaluate_board(game_state))
-                minimax_bot_move(game_state)
+                print("depth", 3+int(bot_moves_played>6))
+                minimax_bot_move(game_state, 3+int(bot_moves_played>6))
+                bot_moves_played += 1
                 print("bot moved")
                 check_5_line(player_turn)
 
@@ -922,7 +917,18 @@ def main():
                 game_state.phase1 = phase1
                 game_state.ring_count = ring_count
                 board_eval = (evaluate_board(game_state))
-                mcts_bot_move(game_state)
+
+                if bot_moves_played <= 6: #dynamic iteration count
+                    iters = 400
+                elif bot_moves_played <= 10:
+                    iters = 600
+                elif bot_moves_played <= 14:
+                    iters = 800
+                else:
+                    iters = 1000
+                print("iterations:",iters)
+                mcts_bot_move(game_state, iterations=iters)
+                bot_moves_played += 1
                 check_5_line(player_turn)
 
                 board_eval = (evaluate_board(game_state))
