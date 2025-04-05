@@ -337,14 +337,14 @@ def count_marker_sequences(game_state, player):
                 scored_sequences.add(sequence_tuple)  # Mark the sequence as scored
 
                 # Wins based on sequence length
-                if len(sequence) == 2:
-                    score += 1
-                elif len(sequence) == 3:
-                    score += 3  # Base score for 3-marker sequences
+                if len(sequence) >= 5:
+                    score += 100
                 elif len(sequence) == 4:
-                    score += 10  # Higher score for 4-marker sequences
-                elif len(sequence) >= 5:
-                    score += 100  # Highest score for 5-marker sequences
+                    score += 10  # Base score for 4-marker sequences
+                elif len(sequence) == 3:
+                    score += 4  # Base score for 3-marker sequences
+                elif len(sequence) == 2:
+                    score += 1  # Base score for 2-marker sequences
 
     return score
 
