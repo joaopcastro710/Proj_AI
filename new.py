@@ -2,17 +2,17 @@ import pygame
 import sys
 import math
 import random
-import pickle
 
 # Options
 RANDOM_BOT = False
 MINIMAX_BOT = False
-MC_BOT = True
+MC_BOT = False
 BOT_COLOR = 1 #1 for white, 2 for black
 
 #BOT vs BOT mode
 
 LOAD_GAME = 0 #LOADS GAME FROM FILE IF 1
+HINTS = 1 #SHOWS HINTS IF 1
 
 # Constants
 WIDTH, HEIGHT = 800, 800
@@ -32,6 +32,7 @@ VERTEX_ROWS = [
 rings = []
 markers = []
 bot_moves_played = 0
+best_move = "---"
 
 # Initialize pygame
 pygame.init()
@@ -133,6 +134,17 @@ def draw_eval(eval):
     streval = str(eval)
     label = font2.render(streval, 1, (255,255,255) if eval>=0 else (0,0,0))
     screen.blit(label,(int(WIDTH-100),50))
+
+def draw_bot_eval(best_eval, best_move):
+    #streval = str(best_eval)
+    #label = font2.render(streval, 1, (255,255,255) if best_eval>=0 else (0,0,0))
+    #screen.blit(label,(int(WIDTH-100),100))
+    
+    strmove = str(best_move[1]) + " to " + str(best_move[2])
+    label = font.render(strmove, 1, (255,255,0))
+    screen.blit(label,(int(WIDTH-180),100))
+    label = font.render("Best move: ", 1, (255,255,0))
+    screen.blit(label,(int(WIDTH-175),80))
     pygame.display.flip()
 
 def draw_pieces():
@@ -224,14 +236,62 @@ def get_valid_moves(player_turn, these_rings, these_markers):
     return valid_moves
 
 def save_game_state(ring_count, player_turn):
-    with open("game_state.pickle", "wb") as f:
-        pickle.dump((rings, markers, ring_count, player_turn), f)
+    with open("game_state.txt", "w") as f:
+        # Save rings
+        f.write("RINGS:\n")
+        for ring in rings:
+            f.write(f"{ring[0]},{ring[1]},{ring[2]}\n")
+        
+        # Save markers
+        f.write("MARKERS:\n")
+        for marker in markers:
+            f.write(f"{marker[0]},{marker[1]},{marker[2]}\n")
+        
+        # Save ring count and player turn
+        f.write("RING_COUNT:\n")
+        ring_count = {1: len([r for r in rings if r[2] == 1]), 2: len([r for r in rings if r[2] == 2])}
+        f.write(f"{ring_count[1]},{ring_count[2]}\n")
+        f.write("PLAYER_TURN:\n")
+        f.write(f"{player_turn}\n")
+        f.write("BOT MOVES MADE:\n")
+        f.write(f"{bot_moves_played}\n")
     #print("Game state saved!")
 
 def load_game_state():
-    global rings, markers
-    with open("game_state.pickle", "rb") as f:
-        rings, markers, ring_count, player_turn = pickle.load(f)
+    global rings, markers, bot_moves_played
+    rings = []
+    markers = []
+    
+    with open("game_state.txt", "r") as f:
+        lines = f.readlines()
+        
+        # Parse rings
+        ring_section = lines.index("RINGS:\n") + 1
+        marker_section = lines.index("MARKERS:\n")
+        for line in lines[ring_section:marker_section]:
+            q, r, player = map(int, line.strip().split(","))
+            rings.append((q, r, player))
+        
+        # Parse markers
+        marker_section = lines.index("MARKERS:\n") + 1
+        ring_count_section = lines.index("RING_COUNT:\n")
+        for line in lines[marker_section:ring_count_section]:
+            q, r, player = map(int, line.strip().split(","))
+            markers.append((q, r, player))
+        
+        # Parse ring count
+        ring_count_section = lines.index("RING_COUNT:\n") + 1
+        player_turn_section = lines.index("PLAYER_TURN:\n")
+        ring_count = dict(zip([1, 2], map(int, lines[ring_count_section:player_turn_section][0].strip().split(","))))
+        
+        # Parse player turn
+        player_turn_section = lines.index("PLAYER_TURN:\n") + 1
+        player_turn = int(lines[player_turn_section].strip())
+
+        bot_moves_played_section = lines.index("BOT MOVES MADE:\n") + 1
+        bot_moves_played = int(lines[bot_moves_played_section].strip())
+
+    
     #print("Game state loaded!")
     return (ring_count, player_turn)
 
@@ -338,7 +398,7 @@ def count_marker_sequences(game_state, player):
 
                 # Wins based on sequence length
                 if len(sequence) >= 5:
-                    score += 100
+                    score += 1000
                 elif len(sequence) == 4:
                     score += 10  # Base score for 4-marker sequences
                 elif len(sequence) == 3:
@@ -360,13 +420,13 @@ def evaluate_board(game_state): #heuristic functions, more markers is good, less
     black_marker_sequences = count_marker_sequences(game_state, 2)
 
     # Ring centrality measure, useful but slightly slower than ideal
-    #white_centrality = sum(1 / (1 + math.hypot(x - WIDTH // 2, y - HEIGHT // 2)) for x, y, p in game_state.rings if p == 1)
-    #black_centrality = sum(1 / (1 + math.hypot(x - WIDTH // 2, y - HEIGHT // 2)) for x, y, p in game_state.rings if p == 2)
+    white_centrality = sum(1 / (1 + math.hypot(x - WIDTH // 2, y - HEIGHT // 2)) for x, y, p in game_state.rings if p == 1)
+    black_centrality = sum(1 / (1 + math.hypot(x - WIDTH // 2, y - HEIGHT // 2)) for x, y, p in game_state.rings if p == 2)
     #print(white_centrality, black_centrality)
 
     score = (black_rings - white_rings) * 10
     score += (white_markers - black_markers) / 5
-    #score += (white_centrality - black_centrality) * 10
+    score += (white_centrality - black_centrality) * 15
     score += (white_marker_sequences - black_marker_sequences) / 10 #TODO check this
 
     #if white_rings-black_rings!=0:
@@ -493,10 +553,9 @@ def minimax_bot_move(game_state, depth=4): # Implement dynamic depth count
         rings = game_state.rings
         markers = game_state.markers
         #print(f"Bot moved ring from {best_move[1]} to {best_move[2]}")
-        return True
+        return (True, best_eval, best_move)
     else:
-        #print("Bot has no valid moves!")
-        return False
+        return (False, None, None)
 
 
 ####################################################################  ---MONTE CARLO BOT
@@ -834,16 +893,29 @@ def main():
     ring_count = {1: 0, 2: 0}
     game_state = GameState()
     board_eval = 0
+    best_eval = 0
+    best_move = "---"
+
+
 
     if LOAD_GAME:
         ring_count, player_turn = load_game_state()
         phase1 = False
+        game_state.rings = rings
+        game_state.markers = markers
+        game_state.player_turn = player_turn
+        game_state.phase1 = phase1
+        game_state.ring_count = ring_count
+        board_eval = evaluate_board(game_state)
 
-    
     while running:
         draw_board(player_turn)
         draw_pieces()
         draw_eval(board_eval)
+        if HINTS:
+            draw_bot_eval(best_eval, best_move)
+                    
+
 
         if player_turn==BOT_COLOR and (RANDOM_BOT): # bot moves here as black
             if not phase1:
@@ -857,6 +929,8 @@ def main():
                 game_state.phase1 = phase1
                 game_state.ring_count = ring_count
                 board_eval = (evaluate_board(game_state))
+                if HINTS:
+                    best_eval, best_move = minimax(game_state, 3, alpha=float('-inf'), beta=float('inf'), maximizing_player=(player_turn==1))
                 save_game_state(ring_count, player_turn)
             else:
                 bot_place_ring(player_turn)
@@ -881,7 +955,7 @@ def main():
                 game_state.ring_count = ring_count
                 board_eval = (evaluate_board(game_state))
                 print("depth", 3+int(bot_moves_played>6))
-                minimax_bot_move(game_state, 3+int(bot_moves_played>6))
+                _, best_eval, best_move = minimax_bot_move(game_state, 3+int(bot_moves_played>6))
                 bot_moves_played += 1
                 print("bot moved")
                 check_5_line(player_turn)
@@ -890,6 +964,9 @@ def main():
                 draw_board(player_turn)
                 draw_pieces()
                 draw_eval(board_eval)
+                if HINTS:
+                    best_eval, best_move = minimax(game_state, 3, alpha=float('-inf'), beta=float('inf'), maximizing_player=(3-player_turn==1))
+                    draw_bot_eval(best_eval, best_move)
                 pygame.display.update()
 
                 player_turn = 3 - player_turn
@@ -935,6 +1012,9 @@ def main():
                 draw_board(player_turn)
                 draw_pieces()
                 draw_eval(board_eval)
+                if HINTS:
+                    best_eval, best_move = minimax(game_state, 3, alpha=float('-inf'), beta=float('inf'), maximizing_player=(3-player_turn==1))
+                    draw_bot_eval(best_eval, best_move)
                 pygame.display.update()
 
                 player_turn = 3 - player_turn
@@ -963,7 +1043,7 @@ def main():
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 for (q, r), (x, y) in vertex_positions.items():  # Iterate over axial coordinates
                     if math.hypot(mouse_x - x, mouse_y - y) < VERTEX_SPACING // 2:  # Check distance using pixel coordinates
-                        if ring_count[player_turn] < 5:  # Placing starting 10 rings
+                        if ring_count[player_turn] < 5 and phase1:  # Placing starting 10 rings
                             if all(rq != q or rr != r for rq, rr, rp in rings):  # Check if position is unoccupied
                                 rings.append((q, r, player_turn))  # Add ring using axial coordinates
                                 ring_count[player_turn] += 1
@@ -976,12 +1056,17 @@ def main():
                             if player_move(mouse_x, mouse_y, player_turn):  # Calculate move
                                 check_5_line(player_turn)
                                 player_turn = 3 - player_turn  # Switch turn
+                                
                                 game_state.rings = rings
                                 game_state.markers = markers
                                 game_state.player_turn = player_turn
                                 game_state.phase1 = phase1
                                 game_state.ring_count = ring_count
                                 board_eval = evaluate_board(game_state)
+
+                                if HINTS and not (RANDOM_BOT or MINIMAX_BOT or MC_BOT):
+                                    best_eval, best_move = minimax(game_state, 3, alpha=float('-inf'), beta=float('inf'), maximizing_player=(3-player_turn==1))
+                    
                                 save_game_state(ring_count, player_turn)
                         break
 
