@@ -16,17 +16,16 @@ RANDOM_BOT2 = False
 MINIMAX_BOT2 = False
 MC_BOT2 = False
 
-DIFFICULTY1 = 2
+DIFFICULTY1 = 2 #default difficulty is medium, can be 1, 2, 3
 DIFFICULTY2 = 2
 
 BOT_COLOR = 1 #1 for white, 2 for black
 
-#BOT vs BOT mode
-
 LOAD_GAME = 0 #LOADS GAME FROM FILE IF 1
 HINTS = 1 #SHOWS HINTS IF 1
+DEBUG = 0 #SHOWS DEBUG INFO IF 1
 
-# Constants
+# Other Constants
 WIDTH, HEIGHT = 800, 800
 BG_COLOR = (96, 96, 96)
 LINE_COLOR = (192, 192, 192)
@@ -36,10 +35,12 @@ MARKER_COLOR_P1 = (255, 255, 255)  # Player 1 Markers (White)
 MARKER_COLOR_P2 = (0, 0, 0)        # Player 2 Markers (Black)
 VERTEX_SPACING = 50
 
-# Define board structure based on vertex counts per row
-VERTEX_ROWS = [
-    4, 7, 8, 9, 10, 9, 10 , 9, 8, 7, 4
-]
+# Define board structure based on vertex counts per row, modifiable
+BOARD1 = [4, 7, 8, 9, 10, 9, 10 , 9, 8, 7, 4]
+BOARD2 = [2,5,6,7,8,7,8,7,6,5,2]
+BOARD3 = [3,4,5,6,7,8,7,6,5,4,3]
+BOARD4 = [6,9,10,11,12,11,12,11,10,9,6]
+VERTEX_ROWS = BOARD1
 
 rings = []
 markers = []
@@ -70,7 +71,7 @@ class GameState:
         new_state.ring_count = self.ring_count.copy()  # Copy ring count dictionary
         return new_state
 
-class MCNode:
+class MCNode: # Monte Carlo Tree Node
     def __init__(self, game_state, parent=None, move=None):
         self.game_state = game_state
         self.visits = 0
@@ -79,33 +80,14 @@ class MCNode:
         self.children = []
         self.move = move
 
-    def is_expanded(self):
+    def is_expanded(self): # Check if all children are expanded
         return len(self.children)==len(get_valid_moves(self.game_state.player_turn, self.game_state.rings, self.game_state.markers))
     
-    def best_child(self, exploration_weight=0.75):
+    def best_child(self, exploration_weight=0.75): # Select the best child based on UCT (Upper Confidence Bound for Trees) with a modifiable exploration_weight value
         return max(self.children, key=lambda child: child.wins / child.visits + exploration_weight * math.sqrt(math.log(self.visits) / child.visits))
 
 
-####################################################################  ---UTILS
-def generate_board_positions():
-    positions = {}
-    start_x = WIDTH // 2
-    start_y = HEIGHT // 6
-
-    y = start_y
-    for row, count in enumerate(VERTEX_ROWS):
-        x_offset = (max(VERTEX_ROWS) - count) * (VERTEX_SPACING // 2)
-        for i in range(count):
-            x = start_x - (count - 1) * (VERTEX_SPACING // 2) + i * VERTEX_SPACING
-            q = int(2 * (i - (count - 1) / 2))  # Calculate axial q coordinate
-            r = len(VERTEX_ROWS) // 2 - row # Calculate axial r coordinate
-            positions[(q, r)] = (x, y)  # Store axial as key and pixel as value
-        y += int(VERTEX_SPACING * math.sqrt(3) / 2)  # Adjust vertical spacing correctly
-    return positions
-
-vertex_positions = generate_board_positions()
-#print(vertex_positions) #debug
-
+############################################################################################################################################# UI
 def draw_board(player_turn, menu=False):
     screen.fill(BG_COLOR)
     pixel_positions = [pos for _, pos in vertex_positions.items()]  # Extract pixel coordinates
@@ -126,7 +108,7 @@ def draw_board(player_turn, menu=False):
         label = font.render("playing...", 1, (255,255,255))
         screen.blit(label,(int(WIDTH/2-10),int(HEIGHT/15)))
 
-    scorewhite = scoreblack = 5
+    scorewhite = scoreblack = 5 # Scoreboard
     for (ring_x, ring_y, player_ring) in rings:
         if player_ring==1:
             scorewhite-=1
@@ -142,21 +124,17 @@ def draw_board(player_turn, menu=False):
         label = font2.render("YINSH! Menu", 1, (0,0,0))
         screen.blit(label,(int(WIDTH/2-65),int(HEIGHT/8)))
 
-def draw_message(message, color):
+def draw_message(message, color): # Display a message on the screen
     label = font2.render(message, 1, color)
     screen.blit(label,(int(WIDTH/2-6*len(message)),5))
     pygame.display.flip()
 
-def draw_eval(eval):
+def draw_eval(eval): # Display the evaluation of the current board
     streval = str(eval)
     label = font2.render("Board eval: "+streval, 1, (255,255,255) if eval>=0 else (0,0,0))
     screen.blit(label,(int(WIDTH-250),50))
 
-def draw_bot_eval(best_eval, best_move):
-    #streval = str(best_eval)
-    #label = font2.render(streval, 1, (255,255,255) if best_eval>=0 else (0,0,0))
-    #screen.blit(label,(int(WIDTH-100),100))
-    
+def draw_bot_eval(best_eval, best_move): # Display the minimax depth 3 evaluation of the position
     strmove = str(best_move[1]) + " to " + str(best_move[2])
     label = font.render(strmove, 1, (255,255,0))
     screen.blit(label,(int(WIDTH-180),100))
@@ -166,15 +144,15 @@ def draw_bot_eval(best_eval, best_move):
 
 def draw_pieces():
     # Draw rings
-    for q, r, player in rings:  # Use axial coordinates
+    for q, r, player in rings:
         color = RING_COLOR_P1 if player == 1 else RING_COLOR_P2
-        x, y = vertex_positions[(q, r)]  # Convert axial to pixel coordinates
+        x, y = vertex_positions[(q, r)]
         pygame.draw.circle(screen, color, (x, y), VERTEX_SPACING // 2, 3)
         
     # Draw markers
-    for q, r, player in markers:  # Use axial coordinates
+    for q, r, player in markers:
         color = MARKER_COLOR_P1 if player == 1 else MARKER_COLOR_P2
-        x, y = vertex_positions[(q, r)]  # Convert axial to pixel coordinates
+        x, y = vertex_positions[(q, r)]
         pygame.draw.circle(screen, color, (x, y), VERTEX_SPACING // 3)
 
 def draw_menu():
@@ -183,13 +161,19 @@ def draw_menu():
     # Draw the board for aesthetics
     draw_board(None, menu=True)
 
-    # Menu title
+    # Menu title and options
     title_font = pygame.font.SysFont("Courier", 36)
     title_label = title_font.render("START GAME", True, (255, 215, 0))
     screen.blit(title_label, (WIDTH // 2 - title_label.get_width() // 2, 20))
 
     hint_label = font2.render("HINTS", True, (0, 255, 0) if HINTS else (255,0,0))
     screen.blit(hint_label, (WIDTH // 2 - hint_label.get_width() // 2, 55))
+
+    hint_label = font2.render("DEBUG", True, (0, 255, 0) if DEBUG else (255,0,0))
+    screen.blit(hint_label, (WIDTH // 2 - hint_label.get_width() // 2, 75))
+
+    hint_label = font2.render("CHANGE BOARD", True, (0, 255, 255))
+    screen.blit(hint_label, (WIDTH // 2 - hint_label.get_width() // 2, HEIGHT // 2-90))
 
     hint_label = font2.render("LOAD GAME", True, (0, 0, 255))
     screen.blit(hint_label, (WIDTH // 2 - hint_label.get_width() // 2, HEIGHT - 225))
@@ -244,7 +228,31 @@ def draw_menu():
         pygame.draw.rect(screen, (255, 0, 0) if DIFFICULTY2 == 3 else (128, 128, 128), (3 * WIDTH // 4 + 40, HEIGHT // 3 + 70, 60, 30))
         screen.blit(hard_label, (3 * WIDTH // 4 + 55, HEIGHT // 3 + 75))
 
-def get_vertices_in_line(start, end, these_rings, these_markers):
+############################################################################################################################################# BOARD UTILS
+def generate_board_positions():
+    # Board is generated on a square grid centered on the middle of the board, strategically positioned over the hexagonal yinsh board, this saves computation effort compared to our previous implementation, 
+    # which used trigonometric functions to search through vertices, 
+    # given the difficulty of representing a hexagonal board where only the vertices are playable
+    # This means the possible unitary move DIRECTIONS are (1,1), (-1,1) and (2,0), as this fits both grids perfectly in this overlapping model
+    positions = {}
+    start_x = WIDTH // 2
+    start_y = HEIGHT // 6
+
+    y = start_y
+    for row, count in enumerate(VERTEX_ROWS):
+        for i in range(count):
+            x = start_x - (count - 1) * (VERTEX_SPACING // 2) + i * VERTEX_SPACING
+            q = int(2 * (i - (count - 1) / 2))  # Calculate x coordinate
+            r = len(VERTEX_ROWS) // 2 - row # Calculate y coordinate
+            positions[(q, r)] = (x, y)  # Store grid coordinate as key and pixels as value
+        y += int(VERTEX_SPACING * math.sqrt(3) / 2)  # Adjust vertical spacing correctly
+    return positions
+
+vertex_positions = generate_board_positions()
+if DEBUG:
+    print(vertex_positions) #debug
+
+def get_vertices_in_line(start, end, these_rings, these_markers): #gets all possible moves in a straight line from a given position
     start_q, start_r = start
     end_q, end_r = end
 
@@ -300,7 +308,7 @@ def get_vertices_in_line(start, end, these_rings, these_markers):
     path.append(end)
     return path
 
-def get_valid_moves(player_turn, these_rings, these_markers, can_gameover=True):
+def get_valid_moves(player_turn, these_rings, these_markers, can_gameover=True): #gets all possible moves for a given player
     valid_moves = []
     occupied_positions = {(piece_q, piece_r) for piece_q, piece_r, _ in these_rings + these_markers}
 
@@ -321,29 +329,36 @@ def get_valid_moves(player_turn, these_rings, these_markers, can_gameover=True):
         check_game_over(player_turn, nomoves=True)
     return valid_moves
 
-def save_game_state(ring_count, player_turn):
-    with open("game_state.txt", "w") as f:
-        # Save rings
-        f.write("RINGS:\n")
-        for ring in rings:
-            f.write(f"{ring[0]},{ring[1]},{ring[2]}\n")
-        
-        # Save markers
-        f.write("MARKERS:\n")
-        for marker in markers:
-            f.write(f"{marker[0]},{marker[1]},{marker[2]}\n")
-        
-        # Save ring count and player turn
-        f.write("RING_COUNT:\n")
-        ring_count = {1: len([r for r in rings if r[2] == 1]), 2: len([r for r in rings if r[2] == 2])}
-        f.write(f"{ring_count[1]},{ring_count[2]}\n")
-        f.write("PLAYER_TURN:\n")
-        f.write(f"{player_turn}\n")
-        f.write("BOT MOVES MADE:\n")
-        f.write(f"{bot_moves_played}\n")
-    #print("Game state saved!")
+################################################################################################### SAVE AND LOAD GAME
+def save_game_state(ring_count, player_turn): #Saves game state to a file if the board is the original one
+    if VERTEX_ROWS == BOARD1:
+        with open("game_state.txt", "w") as f:
+            # Save rings
+            f.write("RINGS:\n")
+            for ring in rings:
+                f.write(f"{ring[0]},{ring[1]},{ring[2]}\n")
+            
+            # Save markers
+            f.write("MARKERS:\n")
+            for marker in markers:
+                f.write(f"{marker[0]},{marker[1]},{marker[2]}\n")
+            
+            # Save ring count and player turn
+            f.write("RING_COUNT:\n")
+            ring_count = {1: len([r for r in rings if r[2] == 1]), 2: len([r for r in rings if r[2] == 2])}
+            f.write(f"{ring_count[1]},{ring_count[2]}\n")
+            # Save player turn
+            f.write("PLAYER_TURN:\n")
+            f.write(f"{player_turn}\n")
+            # Save number of bot moves played
+            f.write("BOT MOVES MADE:\n")
+            f.write(f"{bot_moves_played}\n")
+    elif DEBUG:
+        print("Invalid board size for saving game state.")
+    if DEBUG:
+        print("Game state saved!")
 
-def load_game_state():
+def load_game_state(): #Loads game state from file
     global rings, markers, bot_moves_played
     rings = []
     markers = []
@@ -374,19 +389,20 @@ def load_game_state():
         player_turn_section = lines.index("PLAYER_TURN:\n") + 1
         player_turn = int(lines[player_turn_section].strip())
 
+        # Parse bot moves played
         bot_moves_played_section = lines.index("BOT MOVES MADE:\n") + 1
         bot_moves_played = int(lines[bot_moves_played_section].strip())
 
     
-    #print("Game state loaded!")
+    if DEBUG:
+        print("Game state loaded!")
     return (ring_count, player_turn)
 
-####################################################################  ---RANDOM BOT
+##########################################################################################################################  ---RANDOM BOT / BOT UTILS
 def random_bot_make_move(player_turn): #plays a random bot move
     valid_moves = get_valid_moves(player_turn, rings, markers)
     
     if not valid_moves:
-        #print("Bot has no valid moves!")
         return False
 
     ring_index, (old_q, old_r), (new_q, new_r), path = random.choice(valid_moves)
@@ -403,10 +419,9 @@ def random_bot_make_move(player_turn): #plays a random bot move
     # Move the ring
     rings[ring_index] = (new_q, new_r, player_turn)
     
-    #print(f"Bot moved ring from ({old_x}, {old_y}) to ({new_x}, {new_y})")
     return True
 
-def bot_place_ring(player_turn):
+def bot_place_ring(player_turn): #places a ring for the bot in phase 1
     occupied_positions = {(q, r) for (q, r, p) in rings}  # Rings already placed
     available_positions = [pos for pos, _ in vertex_positions.items() if pos not in occupied_positions]
 
@@ -422,35 +437,24 @@ def bot_place_ring(player_turn):
             simulated_moves = len(a)  # Evaluate mobility
             rings.pop()  # Undo the simulated placement
 
-            # Keep track of the position that maximizes the number of valid moves
-            if simulated_moves > max_moves:
+            # Keep track of the position that maximizes the number of valid moves, add randomness
+            if simulated_moves > max_moves and random.randint(0, 10) > 8:
                 max_moves = simulated_moves
                 best_position = (new_q, new_r)
 
         # Place the ring at the best position
         if best_position:
-            #print(max_moves, a)
-            #print(rings)
             rings.append((best_position[0], best_position[1], player_turn))
-            #print(f"Bot placed a ring at ({best_position[0]}, {best_position[1]}) to maximize mobility")
             return True
 
     # Fallback to random placement if no minimax bot is used
     new_q, new_r = random.choice(available_positions)
     rings.append((new_q, new_r, player_turn))
-    #print(f"Bot placed a ring at ({new_q}, {new_r}) randomly")
     return True
 
-####################################################################  ---MINIMAX BOT
-# plano é criar um gamestate antes de chamar a função e usá-lo como argumento no minimax, começar com heuristics no evaluate_board.
-# aplicar à primeira fase e à escolha do anel a remover no fim de uma sequência de 5
-# prever remoção de aneis na avaliação, melhorar objetivo do bot
-# fazer bot vs bot com menu e musiquinha
-
-# check if 4-line is formed remove ring, wins them
-# wins bigger sequences
-# wins 5-line even more
-def count_marker_sequences(game_state, player):
+############################################################################################################################### MINIMAX BOT
+#Uses an evaluation function to score the board and uses minimax to find the best move according to the evaluation, works quickly and plays well with depth 3 (or 4 in middle-late game)
+def count_marker_sequences(game_state, player): # Count sequences of markers for a given player
     directions = [
         (2, 0),  # Horizontal
         (1, 1),  # Diagonal /
@@ -482,39 +486,42 @@ def count_marker_sequences(game_state, player):
             if len(sequence) >= 2 and sequence_tuple not in scored_sequences:
                 scored_sequences.add(sequence_tuple)  # Mark the sequence as scored
 
-                # Wins based on sequence length
+                # Score based on sequence length, a 4 marker sequence is scored like 1 + 4 + 10 = 15 points
                 if len(sequence) >= 5:
                     score += 1000
                 elif len(sequence) == 4:
-                    score += 10  # Base score for 4-marker sequences
+                    score += 10 
                 elif len(sequence) == 3:
-                    score += 4  # Base score for 3-marker sequences
+                    score += 4
                 elif len(sequence) == 2:
-                    score += 1  # Base score for 2-marker sequences
+                    score += 1
 
     return score
 
-def evaluate_board(game_state): #heuristic functions, more markers is good, less rings is even better
+def evaluate_board(game_state): #heuristic functions, more markers is good, bigger sequences are better, less rings is even better, centrality breaks ties
+    #Returns positive score if white is better, negative if black is better
 
+    # Count rings and markers for both players
     white_rings = sum(1 for _, _, color in game_state.rings if color == 1)
     black_rings = sum(1 for _, _, color in game_state.rings if color == 2)
 
     white_markers = sum(1 for _, _, color in game_state.markers if color == 1)
     black_markers = sum(1 for _, _, color in game_state.markers if color == 2)
 
+    # Count marker sequences for both players
     white_marker_sequences = count_marker_sequences(game_state, 1)
     black_marker_sequences = count_marker_sequences(game_state, 2)
 
     # Ring centrality measure, useful but slightly slower than ideal
     white_centrality = sum(1 / (1 + math.hypot(x - WIDTH // 2, y - HEIGHT // 2)) for x, y, p in game_state.rings if p == 1)
     black_centrality = sum(1 / (1 + math.hypot(x - WIDTH // 2, y - HEIGHT // 2)) for x, y, p in game_state.rings if p == 2)
-    #print(white_centrality, black_centrality)
 
     score = (black_rings - white_rings) * 10
     score += (white_markers - black_markers) / 5
     score += (white_centrality - black_centrality) * 15
     score += (white_marker_sequences - black_marker_sequences) / 10 #TODO check this
 
+    # if game is over on the board players get a very high score (to incentivize winning of course)
     if black_rings<=2:
         score = -10000
     if white_rings<=2:
@@ -522,21 +529,14 @@ def evaluate_board(game_state): #heuristic functions, more markers is good, less
     if white_rings<=2 and black_rings<=2:
         score = 0
 
-    
-
-    #if white_rings-black_rings!=0:
-    #print("board eval: " + str(round(score, 2)) + " white rings: " + str(white_rings) + " black rings: " + str(black_rings) + " white markers: " + str(white_markers) + " black markers: " + str(black_markers) + " white sequences: " + str(white_marker_sequences) + " black sequences: " + str(black_marker_sequences))
-    #score += (len(get_valid_moves(1, game_state.rings, game_state.markers)) - len(get_valid_moves(2, game_state.rings, game_state.markers))) / 50
-
     return round(score, 2)
 
 
 def minimax(game_state, depth, alpha, beta, maximizing_player):
-
     if depth == 0 or check_game_over(game_state, eval=True):
         return evaluate_board(game_state), None
 
-    valid_moves = get_valid_moves(game_state.player_turn, game_state.rings, game_state.markers)
+    valid_moves = get_valid_moves(game_state.player_turn, game_state.rings, game_state.markers) # Get valid moves for the current player
     if not valid_moves:
         return evaluate_board(game_state), None
 
@@ -569,8 +569,7 @@ def minimax(game_state, depth, alpha, beta, maximizing_player):
                 break
         return min_eval, best_move
 
-def apply_move(game_state, move):
-    #print("applying move: " + str(move))
+def apply_move(game_state, move): # Apply a move to the game state
     ring_index, old_pos, new_pos, path = move
     marker_positions = {(q, r): player for (q, r, player) in game_state.markers}
 
@@ -588,8 +587,6 @@ def apply_move(game_state, move):
     # Convert marker_positions back to a list
     game_state.markers = [(q, r, player) for (q, r), player in marker_positions.items()]
 
-    #print(game_state.rings, game_state.markers)
-
     sequences = []
 
     directions = [  # List possible sequence directions
@@ -597,8 +594,6 @@ def apply_move(game_state, move):
         (1, 1),  # Diagonal /
         (-1, 1),  # Diagonal \
     ]
-
-    #print("hello im simulating a move")
 
     marker_positions = {(q, r): player for (q, r, player) in game_state.markers}
 
@@ -622,57 +617,52 @@ def apply_move(game_state, move):
                 # Find rings of the player who made the sequence
                 player_rings = [(i, ring_q, ring_r) for i, (ring_q, ring_r, ring_p) in enumerate(game_state.rings) if ring_p == player]
 
-                # Remove a random ring from the player who made the sequence
+                # Remove a ring from the player who made the sequence
                 if player_rings:
                     i, ring_q, ring_r = random.choice(player_rings)
                     game_state.rings.pop(i)
-                    game_state.player_turn = 3 - game_state.player_turn  # Switch player turn
+                    game_state.player_turn = 3 - game_state.player_turn  # Switch player turn and return
                     return
-                    #print(f"Player {player} formed a sequence and lost a ring at ({ring_q}, {ring_r})")
-    
-    #print(game_state.rings, game_state.markers)
-    #a = input()
 
     game_state.player_turn = 3 - game_state.player_turn
 
-def minimax_bot_move(game_state, depth=4): # Implement dynamic depth count
-    #print("Bot is thinking...") #não desenha em condições
+def minimax_bot_move(game_state, depth=4):
     draw_message("Bot is thinking...", (255, 255, 255) if MINIMAX_BOT1 and game_state.player_turn==1 else (0, 0, 0))
 
-    #check this too
     best_eval, best_move = minimax(game_state, depth, alpha=float('-inf'), beta=float('inf'), maximizing_player= (MINIMAX_BOT1 and game_state.player_turn==1))
 
-    print(best_eval)
+    if DEBUG:
+        print(best_eval)
 
     if best_move:
         apply_move(game_state, best_move)
         global rings, markers
         rings = game_state.rings
         markers = game_state.markers
-        #print(f"Bot moved ring from {best_move[1]} to {best_move[2]}")
         return (True, best_eval, best_move)
     else:
         return (False, None, None)
 
-
 ####################################################################  ---MONTE CARLO BOT
+#The monte carlo bot struggles to play well up until the late game. This is explained by the huge state space of the yinsh board in every move.
+#since the board itself is quite big, the representation of the game state is costly, which reduces the amount of iterations that can be made in the 
+# traditional human/board game timeframe. This combined with the randomness of every game and huge state space results in very sparse results that sometimes dont amount into any
+# palpable good moves up until the late game, where there are less states and the ~1000 iterations can cover them properly.
+# We tried mitigating this using the minimax heuristic function to help priorize locally good mvoes and explore the tree this way instead of the random approach, however this increased the cost of the game_state 
+# representation for every move, which in turn lowered the amount of iterations that could be made in the same time frame, which resulted in the same problem as before, with results varying.
 def evaluate_move(game_state, move):
     cloned_state = game_state.clone()
     apply_move(cloned_state, move)
     return evaluate_board(cloned_state)
 
 def simulate_random_game(game_state, hard=False):
-    #print("started a game")
     current_state = game_state.clone()
-    #print(current_state.rings, current_state.markers)
     while True:
         valid_moves = get_valid_moves(current_state.player_turn, current_state.rings, current_state.markers, False)
-        #print("valid moves: ", valid_moves)
         if not valid_moves:
             break
         
-        if (hard): #check this
-            #print("bot is playing hard")
+        if (hard): # If difficulty is set to hard, uses evaluation to prioritize moves instead of playing random
             # Use evaluation to prioritize moves
             ranked_moves = sorted(
                 valid_moves,
@@ -681,40 +671,34 @@ def simulate_random_game(game_state, hard=False):
             )
             move = ranked_moves[0]
         else:
-            move = random.choice(valid_moves)  # Default to random moves
+            move = random.choice(valid_moves)  # Default to random moves if difficulty not set to hard
 
         apply_move(current_state, move)
 
-
-        #print(current_state.rings, current_state.markers)
-        if len(current_state.rings) <= 7: #check game over
+        if len(current_state.rings) <= 7: #checks game over
 
             count_white = sum(1 for _, _, color in current_state.rings if color == 1)
             count_black = sum(1 for _, _, color in current_state.rings if color == 2)
-            #print(count_white, count_black)
             if count_white < 3 or count_black < 3:
-                #print("go")
-                #print("game over")
                 break
 
-    # Return wins: +1 for a win for the current player, -1 for a loss
-    #check this
+    # Return result
     if (MC_BOT1 and game_state.player_turn==1 and sum(1 for _, _, color in current_state.rings if color == 1) <= 2) or \
-       (MC_BOT2 and game_state.player_turn==2 and sum(1 for _, _, color in current_state.rings if color == 2) <= 2):  # Check based on BOT_COLOR
-        return 1  # BOT_COLOR wins
+       (MC_BOT2 and game_state.player_turn==2 and sum(1 for _, _, color in current_state.rings if color == 2) <= 2):  # Check if its the bot
+        return 1  # bot wins
     else:
-        return 0  # BOT_COLOR does not win
+        return 0  # bot does not win
     
-def mcts(game_state, iterations=700, hard=False): #Implement dynamic iteration count
+def mcts(game_state, iterations=700, hard=False):
     root = MCNode(game_state)
 
     for _ in range(iterations):
-        # Step 1: Selection
+        # Node Selection
         node = root
         while node.is_expanded() and node.children:
             node = node.best_child(exploration_weight=0.75)
 
-        # Step 2: Expansion
+        # Node Expansion
         if not node.is_expanded():
             move = random.choice([
                 move for move in get_valid_moves(node.game_state.player_turn, node.game_state.rings, node.game_state.markers, False)
@@ -726,52 +710,46 @@ def mcts(game_state, iterations=700, hard=False): #Implement dynamic iteration c
             node.children.append(child_node)
             node = child_node
 
-        # Step 3: Simulation
+        # Game Simulation
         wins = simulate_random_game(node.game_state, hard)
-        #print("game ended", wins)
-        #print(wins)
 
-        # Step 4: Backpropagation
+        # Backpropagation
         while node:
             node.visits += 1
             node.wins += wins
             node = node.parent
 
-    # Return the best move from the root
-    print("MCTS Data:")
-    for child in root.children:
-        move = child.move
-        visits = child.visits
-        wins = child.wins
-        win_rate = wins / visits if visits > 0 else 0
-        print(f"Move: {move}, Visits: {visits}, Wins: {wins}, Win Rate: {win_rate:.2f}")
-    #return (root.best_child(exploration_weight=0.25).move) if root.children else (None, 0)
-    print("best move: ", max(root.children, key=lambda child: child.visits).move)
-    print("visits: ", max(root.children, key=lambda child: child.visits).visits)
-    print("wins: ", max(root.children, key=lambda child: child.visits).wins)
+    if DEBUG:
+        print("MCTS Data:")
+        for child in root.children:
+            move = child.move
+            visits = child.visits
+            wins = child.wins
+            win_rate = wins / visits if visits > 0 else 0
+            print(f"Move: {move}, Visits: {visits}, Wins: {wins}, Win Rate: {win_rate:.2f}")
+
+        print("best move: ", max(root.children, key=lambda child: child.visits).move)
+        print("visits: ", max(root.children, key=lambda child: child.visits).visits)
+        print("wins: ", max(root.children, key=lambda child: child.visits).wins)
+
+    # Return the best move from the root, the one with the most visits as per the slides, we tried combining it with win rate but this worked better
     return max(root.children, key=lambda child: child.visits).move if root.children else (None, 0)
 
-def mcts_bot_move(game_state, iterations=700, hard=False): # Implement dynamic iteration count
-    #print("Bot is thinking...")
+def mcts_bot_move(game_state, iterations=700, hard=False):
     draw_message("Bot is thinking...", (255, 255, 255) if MC_BOT1 and game_state.player_turn==1 else (0, 0, 0))
 
     best_move = mcts(game_state, iterations, hard)
-    #print(best_wins)
 
     if best_move:
         apply_move(game_state, best_move)
         global rings, markers
         rings = game_state.rings
         markers = game_state.markers
-
-        #print(f"Bot moved ring from {best_move[1]} to {best_move[2]}")
         return True
     else:
-        #print("Bot has no valid moves!")
         return False
 
-
-####################################################################  ---PLAYER MOVES
+#######################################################################################################################################################  ---PLAYER MOVES
 def player_move(mouse_x, mouse_y, player_turn): #If click is in my own ring, read another click. If click is in possible space, place ring and new marker there.
     #Move must be made in a straight line to a blank space, jumped markers must be flipped. Rules https://www.gipf.com/yinsh/index.html for specifics.
     #When 5 straight markers are the same color they are removed from the board, together with a ring. First to remove 3 rings wins.
@@ -809,7 +787,7 @@ def player_move(mouse_x, mouse_y, player_turn): #If click is in my own ring, rea
     return False  # didnt click a ring
 
 
-####################################################################  ---GAME UTILS
+##############################################################################################################################################  ---ENDGAME UTILS
 def check_5_line(player_turn):
     check_game_over(player_turn)  # Check if game is over
     # Check if there are 5 markers of the same color aligned, if so remove a ring
@@ -873,7 +851,7 @@ def check_5_line(player_turn):
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_x, mouse_y = pygame.mouse.get_pos()
-                    if len(set(own for _, own in sequences)) == 1:  # If only one player made a sequence
+                    if len(set(own for _, own in sequences)) == 1:  # If only one player made a sequence simply eliminate the seqeunce and a ring
                         only_player = sequences[0][1]
                         if ((RANDOM_BOT1 or MINIMAX_BOT1 or MC_BOT1) and only_player == 1) or ((RANDOM_BOT2 or MINIMAX_BOT2 or MC_BOT2) and only_player == 2):
                             selected_sequence = random.choice([seq for seq, _ in sequences])
@@ -899,7 +877,7 @@ def check_5_line(player_turn):
                                     else:
                                         selected_sequence = seq
 
-                    elif len(set(own for _, own in sequences)) == 2:
+                    elif len(set(own for _, own in sequences)) == 2: # if both players made a sequence eliminate a ring for each player
                         player_sequences = {1: [], 2: []}
                         for seq, own in sequences:
                             player_sequences[own].append(seq)
@@ -961,25 +939,24 @@ def check_5_line(player_turn):
 
 def remove_ring(player):
     draw_message("You made a sequence! Eliminate a ring", ((255, 255, 255) if player == 1 else (0, 0, 0)))
-    while True:  # Eliminate ring
+    while True:
         if ((RANDOM_BOT1 or MINIMAX_BOT1 or MC_BOT1) and player == 1) or ((RANDOM_BOT2 or MINIMAX_BOT2 or MC_BOT2) and player == 2):  # Bot eliminates ring
             bot_rings = [(i, ring_q, ring_r) for i, (ring_q, ring_r, ring_p) in enumerate(rings) if ring_p == player]
 
             if bot_rings:
                 i, ring_q, ring_r = random.choice(bot_rings)
                 rings.pop(i)
-                #print(f"Bot removed ring at ({ring_q}, {ring_r})")
                 return
 
-        for event in pygame.event.get():
+        for event in pygame.event.get(): #Human player eliminates ring
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 for i, (ring_q, ring_r, ring_p) in enumerate(rings):  # See if there is a ring where I clicked
                     if math.hypot(mouse_x - vertex_positions[(ring_q, ring_r)][0], mouse_y - vertex_positions[(ring_q, ring_r)][1]) < VERTEX_SPACING // 2 and player == ring_p:
-                        rings.pop(i)
+                        rings.pop(i) # If there is i pop it
                         return
 
-def check_game_over(player_turn, eval=False, nomoves=False):
+def check_game_over(player_turn, eval=False, nomoves=False): #Check for game over conditions, if so display message and reset game
     global rings, markers, bot_moves_played, best_move
     draw_board(player_turn)
     draw_pieces()
@@ -991,16 +968,17 @@ def check_game_over(player_turn, eval=False, nomoves=False):
             count_white += 1
         else:
             count_black += 1
-    if (count_white <= 2 and count_black <= 2) or (nomoves and count_black==count_white and eval==False):
+    if (count_white <= 2 and count_black <= 2) or (nomoves and count_black==count_white and eval==False): #Draw if there are no moves and players are tied or if they reach 3 rings removed in the same move
         draw_message("Game over, it's a draw", (255,255,0))
         game_over = True
-    elif count_white <= 2 or (nomoves and count_white<count_black and eval==False):
+    elif count_white <= 2 or (nomoves and count_white<count_black and eval==False): #White win if they have 3 rings removed or if there are no moves and they are ahead
         draw_message("Game over, White wins", (255,255,255))
         game_over = True
-    elif count_black <= 2 or (nomoves and count_black<count_white and eval==False):
+    elif count_black <= 2 or (nomoves and count_black<count_white and eval==False): #Black win if they have 3 rings removed or if there are no moves and they are ahead
         draw_message("Game over, Black wins", (0,0,0))
         game_over = True
-    while game_over:
+
+    while game_over: #Game over screen waits for a click before continuing
         pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -1012,7 +990,7 @@ def check_game_over(player_turn, eval=False, nomoves=False):
 
 
 def main():
-    global bot_moves_played, DIFFICULTY1, DIFFICULTY2, HINTS, RANDOM_BOT1, RANDOM_BOT2, MINIMAX_BOT1, MINIMAX_BOT2, MC_BOT1, MC_BOT2, HINTS, LOAD_GAME
+    global vertex_positions, bot_moves_played, DIFFICULTY1, DIFFICULTY2, RANDOM_BOT1, RANDOM_BOT2, MINIMAX_BOT1, MINIMAX_BOT2, MC_BOT1, MC_BOT2, HINTS, LOAD_GAME, DEBUG, VERTEX_ROWS, BOARD1, BOARD2, BOARD3, BOARD4
     running = True
     phase1 = True
     player_turn = 1
@@ -1022,7 +1000,7 @@ def main():
     best_eval = 0
     best_move = "---"
 
-    while running:
+    while running: #Menu loop
         draw_menu()  # Draw the menu
 
         for event in pygame.event.get():
@@ -1030,10 +1008,10 @@ def main():
                 running = False
                 pygame.quit()
                 sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pygame.MOUSEBUTTONDOWN: #Fetch click coordinates
                 mouse_x, mouse_y = pygame.mouse.get_pos()
 
-                # Check if Player 1 slot is clicked
+                # Check if Player 1 slot is clicked, if so change player
                 if WIDTH // 4 - 100 <= mouse_x <= WIDTH // 4 + 100 and HEIGHT // 3 <= mouse_y <= HEIGHT // 3 + 50:
                     if not (MC_BOT1 or MINIMAX_BOT1 or RANDOM_BOT1):
                         RANDOM_BOT1 = True
@@ -1045,9 +1023,8 @@ def main():
                         MC_BOT1 = True
                     elif MC_BOT1:
                         MC_BOT1 = False
-                    # Update Player 1 settings here (e.g., toggle between Human/Bot)
 
-                # Check if Player 2 slot is clicked
+                # Check if Player 2 slot is clicked and if so change player
                 elif 3 * WIDTH // 4 - 100 <= mouse_x <= 3 * WIDTH // 4 + 100 and HEIGHT // 3 <= mouse_y <= HEIGHT // 3 + 50:
                     if not (MC_BOT2 or MINIMAX_BOT2 or RANDOM_BOT2):
                         RANDOM_BOT2 = True
@@ -1059,9 +1036,8 @@ def main():
                         MC_BOT2 = True
                     elif MC_BOT2:
                         MC_BOT2 = False
-                    # Update Player 2 settings here (e.g., toggle between Human/Bot)
 
-                # Check if Player 1 difficulty buttons are clicked
+                # Check if Player 1 difficulty buttons are clicked, if so swithc difficulty
                 elif WIDTH // 4 - 100 <= mouse_x <= WIDTH // 4 - 40 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
                     DIFFICULTY1 = 1  # Easy
                 elif WIDTH // 4 - 30 <= mouse_x <= WIDTH // 4 + 30 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
@@ -1069,7 +1045,7 @@ def main():
                 elif WIDTH // 4 + 40 <= mouse_x <= WIDTH // 4 + 100 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
                     DIFFICULTY1 = 3  # Hard
 
-                # Check if Player 2 difficulty buttons are clicked
+                # Check if Player 2 difficulty buttons are clicked, if so switch difficulty
                 elif 3 * WIDTH // 4 - 100 <= mouse_x <= 3 * WIDTH // 4 - 40 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
                     DIFFICULTY2 = 1  # Easy
                 elif 3 * WIDTH // 4 - 30 <= mouse_x <= 3 * WIDTH // 4 + 30 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
@@ -1077,23 +1053,38 @@ def main():
                 elif 3 * WIDTH // 4 + 40 <= mouse_x <= 3 * WIDTH // 4 + 100 and HEIGHT // 3 + 70 <= mouse_y <= HEIGHT // 3 + 100:
                     DIFFICULTY2 = 3  # Hard
 
-                # Check if Start button is clicked
+                # Check if other buttons are clicked
                 elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and 0 <= mouse_y <= 55:
                     running = False  # Exit the menu and start the game
 
-                elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and 55 <= mouse_y <= 80:
+                elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and 55 <= mouse_y <= 75:
                     HINTS = not HINTS  # Toggle hints
+                
+                elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and 75 <= mouse_y <= 95:
+                    DEBUG = not DEBUG  # Toggle debug
 
                 elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and 575 <= mouse_y:
                     LOAD_GAME = True
                     running = False  # Exit the menu and start the game
+
+                elif WIDTH // 2 - 100 <= mouse_x <= WIDTH // 2 + 100 and HEIGHT//2-90 <= mouse_y <= HEIGHT//2-70:
+                    if VERTEX_ROWS == BOARD1: #Swap the boards and regenerate vertex positions
+                        VERTEX_ROWS = BOARD2
+                    elif VERTEX_ROWS == BOARD2:
+                        VERTEX_ROWS = BOARD3
+                    elif VERTEX_ROWS == BOARD3:
+                        VERTEX_ROWS = BOARD4
+                    elif VERTEX_ROWS == BOARD4:
+                        VERTEX_ROWS = BOARD1
+                    vertex_positions = generate_board_positions()
+                    print(vertex_positions)
 
         pygame.display.update()
                 
 
     running=True
 
-    if LOAD_GAME:
+    if LOAD_GAME: #If load game just load the game state and start the game
         ring_count, player_turn = load_game_state()
         phase1 = False
         game_state.rings = rings
@@ -1102,37 +1093,40 @@ def main():
         game_state.phase1 = phase1
         game_state.ring_count = ring_count
         board_eval = evaluate_board(game_state)
+        VERTEX_ROWS = BOARD1
+        vertex_positions = generate_board_positions()
+        LOAD_GAME = False
 
-    while running:
-        draw_board(player_turn)
+    while running: #Main game loop
+        draw_board(player_turn) #Draw screen
         draw_pieces()
         draw_eval(board_eval)
-        if HINTS:
+        if HINTS: #Draw hints if activated
             draw_bot_eval(best_eval, best_move)
 
 
-        if (player_turn==1 and RANDOM_BOT1) or (player_turn==2 and RANDOM_BOT2): # bot moves here as black
-            if not phase1:
+        if (player_turn==1 and RANDOM_BOT1) or (player_turn==2 and RANDOM_BOT2): # Check for random bot moves
+            if not phase1: #normal moves
                 random_bot_make_move(player_turn)
                 bot_moves_played += 1
                 check_5_line(player_turn)
                 player_turn = 3 - player_turn
-                game_state.rings = rings
+                game_state.rings = rings #Game state is updated
                 game_state.markers = markers
                 game_state.player_turn = player_turn
                 game_state.phase1 = phase1
                 game_state.ring_count = ring_count
-                board_eval = (evaluate_board(game_state))
-                if HINTS:
+                board_eval = (evaluate_board(game_state)) #Board evaluation
+                if HINTS: #Hints are a result of a depth 3 minimax search to save time and space but still be accurate
                     best_eval, best_move = minimax(game_state, 3, alpha=float('-inf'), beta=float('inf'), maximizing_player=(player_turn==1))
                 save_game_state(ring_count, player_turn)
-            else:
+            else: #Move in phase 1, place a ring, maximize amount of possible moves on each ring
                 bot_place_ring(player_turn)
                 ring_count[player_turn] += 1
                 if ring_count[1] == ring_count[2] == 5:
                     phase1 = False
                 player_turn = 3 - player_turn
-                if not phase1:
+                if not phase1: #If it was the last ring get ready for phase 2
                     game_state.rings = rings
                     game_state.markers = markers
                     game_state.player_turn = player_turn
@@ -1140,7 +1134,7 @@ def main():
                     game_state.ring_count = ring_count
                     board_eval = (evaluate_board(game_state))
                     save_game_state(ring_count, player_turn)
-        elif (player_turn==1 and MINIMAX_BOT1) or (player_turn==2 and MINIMAX_BOT2):
+        elif (player_turn==1 and MINIMAX_BOT1) or (player_turn==2 and MINIMAX_BOT2): # same process for minimax bot
             if not phase1:
                 game_state.rings = rings
                 game_state.markers = markers
@@ -1148,21 +1142,26 @@ def main():
                 game_state.phase1 = phase1
                 game_state.ring_count = ring_count
                 board_eval = (evaluate_board(game_state))
-                if (DIFFICULTY1==1 and MINIMAX_BOT1 and player_turn==1) or (DIFFICULTY2==1 and MINIMAX_BOT2 and player_turn==2):
-                    print("depth 1")
+                if (DIFFICULTY1==1 and MINIMAX_BOT1 and player_turn==1) or (DIFFICULTY2==1 and MINIMAX_BOT2 and player_turn==2): #difficulty and amount of moves made determine the depth
+                    if DEBUG:
+                        print("depth 1")
                     _, best_eval, best_move = minimax_bot_move(game_state, 1)
                 elif (DIFFICULTY1==2 and MINIMAX_BOT1 and player_turn==1) or (DIFFICULTY2==2 and MINIMAX_BOT2 and player_turn==2):
-                    print("depth 2")
+                    if DEBUG:
+                        print("depth 2")
                     _, best_eval, best_move = minimax_bot_move(game_state, 2)
-                elif ((MINIMAX_BOT1 or RANDOM_BOT1 or MC_BOT1) and player_turn==1) and ((MINIMAX_BOT2 or RANDOM_BOT2 or MC_BOT2) and player_turn==2):
-                    print("depth", 3+int(bot_moves_played>12))
+                elif ((MINIMAX_BOT1 or RANDOM_BOT1 or MC_BOT1) and player_turn==1) and ((MINIMAX_BOT2 or RANDOM_BOT2 or MC_BOT2) and player_turn==2): #in hard difficulty we Check how many moves are played, if enough are made we can search deeper as the state space is smaller
+                    if DEBUG:
+                        print("depth", 3+int(bot_moves_played>12))
                     _, best_eval, best_move = minimax_bot_move(game_state, 3+int(bot_moves_played>12))
                 else:
-                    print("depth", 3+int(bot_moves_played>6))
+                    if DEBUG:
+                        print("depth", 3+int(bot_moves_played>6))
                     if (DIFFICULTY1==3 and MINIMAX_BOT1 and player_turn==1) or (DIFFICULTY2==3 and MINIMAX_BOT2 and player_turn==2):
                         _, best_eval, best_move = minimax_bot_move(game_state, 3+int(bot_moves_played>12))
                 bot_moves_played += 1
-                print("bot moved")
+                if DEBUG:
+                    print("bot moved")
                 check_5_line(player_turn)
 
                 board_eval = (evaluate_board(game_state))
@@ -1191,7 +1190,7 @@ def main():
                     board_eval = (evaluate_board(game_state))
                     save_game_state(ring_count, player_turn)
 
-        elif (player_turn==1 and MC_BOT1) or (player_turn==2 and MC_BOT2):
+        elif (player_turn==1 and MC_BOT1) or (player_turn==2 and MC_BOT2): #same process for the monte carlo bot
             if not phase1:
                 game_state.rings = rings
                 game_state.markers = markers
@@ -1200,7 +1199,7 @@ def main():
                 game_state.ring_count = ring_count
                 board_eval = (evaluate_board(game_state))
 
-                if bot_moves_played <= 6: #dynamic iteration count
+                if bot_moves_played <= 6: #dynamic iteration count, depending on the stage of the game we are in
                     iters = 300
                 elif bot_moves_played <= 10:
                     iters = 500
@@ -1216,12 +1215,15 @@ def main():
                 elif (DIFFICULTY1==3 and MC_BOT1 and player_turn==1) or (DIFFICULTY2==3 and MC_BOT2 and player_turn==2):
                     iters = int(iters / 2)
                     
-                print("iterations:",iters)
-                if (DIFFICULTY1==3 and MC_BOT1 and player_turn==1) or (DIFFICULTY2==3 and MC_BOT2 and player_turn==2):
-                    print("hard bot playing")
+                if DEBUG:
+                    print("iterations:",iters)
+                if (DIFFICULTY1==3 and MC_BOT1 and player_turn==1) or (DIFFICULTY2==3 and MC_BOT2 and player_turn==2): #MC++, the mc bot in hard difficulty uses the evaluation function to priorize moves when exploring the tree, instead of playing random every time
+                    if DEBUG:
+                        print("hard bot playing")
                     mcts_bot_move(game_state, iterations=iters, hard=True)
                 else:
-                    print("normal bot playing")
+                    if DEBUG:
+                        print("normal bot playing")
                     mcts_bot_move(game_state, iterations=iters)
                 bot_moves_played += 1
                 check_5_line(player_turn)
@@ -1259,11 +1261,11 @@ def main():
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
-                for (q, r), (x, y) in vertex_positions.items():  # Iterate over axial coordinates
+                for (q, r), (x, y) in vertex_positions.items():  # Iterate over vertex coordinates
                     if math.hypot(mouse_x - x, mouse_y - y) < VERTEX_SPACING // 2:  # Check distance using pixel coordinates
-                        if ring_count[player_turn] < 5 and phase1:  # Placing starting 10 rings
+                        if ring_count[player_turn] < 5 and phase1:  # Placing starting 10 rings, phase 1
                             if all(rq != q or rr != r for rq, rr, rp in rings):  # Check if position is unoccupied
-                                rings.append((q, r, player_turn))  # Add ring using axial coordinates
+                                rings.append((q, r, player_turn))  # Add ring using vertex coordinates
                                 ring_count[player_turn] += 1
                                 player_turn = 3 - player_turn
                                 if ring_count[1] == ring_count[2] == 5:
