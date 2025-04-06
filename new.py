@@ -106,7 +106,7 @@ def generate_board_positions():
 vertex_positions = generate_board_positions()
 #print(vertex_positions) #debug
 
-def draw_board(player_turn):
+def draw_board(player_turn, menu=False):
     screen.fill(BG_COLOR)
     pixel_positions = [pos for _, pos in vertex_positions.items()]  # Extract pixel coordinates
     for (q, r), (x, y) in vertex_positions.items():
@@ -133,10 +133,14 @@ def draw_board(player_turn):
         else:
             scoreblack-=1
 
-    label = font2.render(f"White {scorewhite} ", 1, (255,255,255))
-    screen.blit(label,(int(WIDTH/2-90),int(HEIGHT/10)))
-    label = font2.render(f"{scoreblack} Black", 1, (0,0,0))
-    screen.blit(label,(int(WIDTH/2),int(HEIGHT/10)))
+    if not menu:
+        label = font2.render(f"White {scorewhite} ", 1, (255,255,255))
+        screen.blit(label,(int(WIDTH/2-90),int(HEIGHT/10)))
+        label = font2.render(f"{scoreblack} Black", 1, (0,0,0))
+        screen.blit(label,(int(WIDTH/2),int(HEIGHT/10)))
+    else:
+        label = font2.render("YINSH! Menu", 1, (0,0,0))
+        screen.blit(label,(int(WIDTH/2-65),int(HEIGHT/8)))
 
 def draw_message(message, color):
     label = font2.render(message, 1, color)
@@ -145,8 +149,8 @@ def draw_message(message, color):
 
 def draw_eval(eval):
     streval = str(eval)
-    label = font2.render(streval, 1, (255,255,255) if eval>=0 else (0,0,0))
-    screen.blit(label,(int(WIDTH-100),50))
+    label = font2.render("Board eval: "+streval, 1, (255,255,255) if eval>=0 else (0,0,0))
+    screen.blit(label,(int(WIDTH-250),50))
 
 def draw_bot_eval(best_eval, best_move):
     #streval = str(best_eval)
@@ -177,7 +181,7 @@ def draw_menu():
     screen.fill((50, 50, 50))  # Background color
 
     # Draw the board for aesthetics
-    draw_board(None)
+    draw_board(None, menu=True)
 
     # Menu title
     title_font = pygame.font.SysFont("Courier", 36)
@@ -214,28 +218,31 @@ def draw_menu():
         p2_label = font2.render("P2: Random Bot", True, (255, 255, 255))
     screen.blit(p2_label, (3 * WIDTH // 4 - p2_label.get_width() // 2, HEIGHT // 3 + 10))
 
-    # Difficulty buttons for Player 1
-    pygame.draw.rect(screen, (0, 255, 0) if DIFFICULTY1 == 1 else (128, 128, 128), (WIDTH // 4 - 100, HEIGHT // 3 + 70, 60, 30))
     easy_label = font.render("Easy", True, (0, 0, 0))
-    screen.blit(easy_label, (WIDTH // 4 - 85, HEIGHT // 3 + 75))
-
-    pygame.draw.rect(screen, (255, 255, 0) if DIFFICULTY1 == 2 else (128, 128, 128), (WIDTH // 4 - 30, HEIGHT // 3 + 70, 60, 30))
     medium_label = font.render("Medium", True, (0, 0, 0))
-    screen.blit(medium_label, (WIDTH // 4 - 25, HEIGHT // 3 + 75))
-
-    pygame.draw.rect(screen, (255, 0, 0) if DIFFICULTY1 == 3 else (128, 128, 128), (WIDTH // 4 + 40, HEIGHT // 3 + 70, 60, 30))
     hard_label = font.render("Hard", True, (0, 0, 0))
-    screen.blit(hard_label, (WIDTH // 4 + 55, HEIGHT // 3 + 75))
+
+    # Difficulty buttons for Player 1
+    if (MC_BOT1 or MINIMAX_BOT1):
+        pygame.draw.rect(screen, (0, 255, 0) if DIFFICULTY1 == 1 else (128, 128, 128), (WIDTH // 4 - 100, HEIGHT // 3 + 70, 60, 30))
+        screen.blit(easy_label, (WIDTH // 4 - 85, HEIGHT // 3 + 75))
+
+        pygame.draw.rect(screen, (255, 255, 0) if DIFFICULTY1 == 2 else (128, 128, 128), (WIDTH // 4 - 30, HEIGHT // 3 + 70, 60, 30))
+        screen.blit(medium_label, (WIDTH // 4 - 25, HEIGHT // 3 + 75))
+
+        pygame.draw.rect(screen, (255, 0, 0) if DIFFICULTY1 == 3 else (128, 128, 128), (WIDTH // 4 + 40, HEIGHT // 3 + 70, 60, 30))
+        screen.blit(hard_label, (WIDTH // 4 + 55, HEIGHT // 3 + 75))
 
     # Difficulty buttons for Player 2
-    pygame.draw.rect(screen, (0, 255, 0) if DIFFICULTY2 == 1 else (128, 128, 128), (3 * WIDTH // 4 - 100, HEIGHT // 3 + 70, 60, 30))
-    screen.blit(easy_label, (3 * WIDTH // 4 - 85, HEIGHT // 3 + 75))
+    if (MC_BOT2 or MINIMAX_BOT2):
+        pygame.draw.rect(screen, (0, 255, 0) if DIFFICULTY2 == 1 else (128, 128, 128), (3 * WIDTH // 4 - 100, HEIGHT // 3 + 70, 60, 30))
+        screen.blit(easy_label, (3 * WIDTH // 4 - 85, HEIGHT // 3 + 75))
 
-    pygame.draw.rect(screen, (255, 255, 0) if DIFFICULTY2 == 2 else (128, 128, 128), (3 * WIDTH // 4 - 30, HEIGHT // 3 + 70, 60, 30))
-    screen.blit(medium_label, (3 * WIDTH // 4 - 25, HEIGHT // 3 + 75))
+        pygame.draw.rect(screen, (255, 255, 0) if DIFFICULTY2 == 2 else (128, 128, 128), (3 * WIDTH // 4 - 30, HEIGHT // 3 + 70, 60, 30))
+        screen.blit(medium_label, (3 * WIDTH // 4 - 25, HEIGHT // 3 + 75))
 
-    pygame.draw.rect(screen, (255, 0, 0) if DIFFICULTY2 == 3 else (128, 128, 128), (3 * WIDTH // 4 + 40, HEIGHT // 3 + 70, 60, 30))
-    screen.blit(hard_label, (3 * WIDTH // 4 + 55, HEIGHT // 3 + 75))
+        pygame.draw.rect(screen, (255, 0, 0) if DIFFICULTY2 == 3 else (128, 128, 128), (3 * WIDTH // 4 + 40, HEIGHT // 3 + 70, 60, 30))
+        screen.blit(hard_label, (3 * WIDTH // 4 + 55, HEIGHT // 3 + 75))
 
 def get_vertices_in_line(start, end, these_rings, these_markers):
     start_q, start_r = start
@@ -310,6 +317,8 @@ def get_valid_moves(player_turn, these_rings, these_markers):
             if path:
                 valid_moves.append((i, (ring_q, ring_r), (q, r), path))
 
+    if len(valid_moves)==0:
+        check_game_over(player_turn, nomoves=True)
     return valid_moves
 
 def save_game_state(ring_count, player_turn):
@@ -506,6 +515,13 @@ def evaluate_board(game_state): #heuristic functions, more markers is good, less
     score += (white_centrality - black_centrality) * 15
     score += (white_marker_sequences - black_marker_sequences) / 10 #TODO check this
 
+    if black_rings<=2:
+        score = -10000
+    if white_rings<=2:
+        score = 10000
+
+    
+
     #if white_rings-black_rings!=0:
     #print("board eval: " + str(round(score, 2)) + " white rings: " + str(white_rings) + " black rings: " + str(black_rings) + " white markers: " + str(white_markers) + " black markers: " + str(black_markers) + " white sequences: " + str(white_marker_sequences) + " black sequences: " + str(black_marker_sequences))
     #score += (len(get_valid_moves(1, game_state.rings, game_state.markers)) - len(get_valid_moves(2, game_state.rings, game_state.markers))) / 50
@@ -636,15 +652,33 @@ def minimax_bot_move(game_state, depth=4): # Implement dynamic depth count
 
 
 ####################################################################  ---MONTE CARLO BOT
-def simulate_random_game(game_state):
+def evaluate_move(game_state, move):
+    cloned_state = game_state.clone()
+    apply_move(cloned_state, move)
+    return evaluate_board(cloned_state)
+
+def simulate_random_game(game_state, hard=False):
     #print("started a game")
     current_state = game_state.clone()
     #print(current_state.rings, current_state.markers)
     while True:
         valid_moves = get_valid_moves(current_state.player_turn, current_state.rings, current_state.markers)
+        #print("valid moves: ", valid_moves)
         if not valid_moves:
             break
-        move = random.choice(valid_moves)
+        
+        if (hard): #check this
+            #print("bot is playing hard")
+            # Use evaluation to prioritize moves
+            ranked_moves = sorted(
+                valid_moves,
+                key=lambda move: evaluate_move(current_state, move) * (1 if current_state.player_turn == 1 else -1),
+                reverse=True
+            )
+            move = ranked_moves[0]
+        else:
+            move = random.choice(valid_moves)  # Default to random moves
+
         apply_move(current_state, move)
 
 
@@ -666,7 +700,7 @@ def simulate_random_game(game_state):
     else:
         return 0  # BOT_COLOR does not win
     
-def mcts(game_state, iterations=700): #Implement dynamic iteration count
+def mcts(game_state, iterations=700, hard=False): #Implement dynamic iteration count
     root = MCNode(game_state)
 
     for _ in range(iterations):
@@ -688,7 +722,7 @@ def mcts(game_state, iterations=700): #Implement dynamic iteration count
             node = child_node
 
         # Step 3: Simulation
-        wins = simulate_random_game(node.game_state)
+        wins = simulate_random_game(node.game_state, hard)
         #print("game ended", wins)
         #print(wins)
 
@@ -712,11 +746,11 @@ def mcts(game_state, iterations=700): #Implement dynamic iteration count
     print("wins: ", max(root.children, key=lambda child: child.visits).wins)
     return max(root.children, key=lambda child: child.visits).move if root.children else (None, 0)
 
-def mcts_bot_move(game_state, iterations=700): # Implement dynamic iteration count
+def mcts_bot_move(game_state, iterations=700, hard=False): # Implement dynamic iteration count
     #print("Bot is thinking...")
     draw_message("Bot is thinking...", (255, 255, 255) if MC_BOT1 and game_state.player_turn==1 else (0, 0, 0))
 
-    best_move = mcts(game_state, iterations)
+    best_move = mcts(game_state, iterations, hard)
     #print(best_wins)
 
     if best_move:
@@ -911,6 +945,8 @@ def check_5_line(player_turn):
                                                     choosing = False
                                                 else:
                                                     selected_sequences[player] = seq
+                        check_game_over(player_turn)
+                        return True
 
         check_game_over(player_turn)
         return True
@@ -936,11 +972,10 @@ def remove_ring(player):
                         rings.pop(i)
                         return
 
-def check_game_over(player_turn, eval=False):
-    if not eval:
-        draw_board(player_turn)
-        draw_pieces()
-        pygame.display.flip()
+def check_game_over(player_turn, eval=False, nomoves=False):
+    global rings, markers, bot_moves_played, best_move
+    draw_board(player_turn)
+    draw_pieces()
     count_white = 0
     count_black = 0
     game_over = False
@@ -949,23 +984,25 @@ def check_game_over(player_turn, eval=False):
             count_white += 1
         else:
             count_black += 1
-    if count_white <= 2 and count_black <= 2:
-        if not eval:
-            draw_message("Game over, it's a draw", (255,255,0))
+    if (count_white <= 2 and count_black <= 2) or (nomoves and count_black==count_white):
+        draw_message("Game over, it's a draw", (255,255,0))
         game_over = True
-    elif count_white <= 2:
-        if not eval:
-            draw_message("Game over, White wins", (255,255,255))
+    elif count_white <= 2 or (nomoves and count_white<count_black):
+        draw_message("Game over, White wins", (255,255,255))
         game_over = True
-    elif count_black <= 2:
-        if not eval:
-            draw_message("Game over, Black wins", (0,0,0))
+    elif count_black <= 2 or (nomoves and count_black<count_white):
+        draw_message("Game over, Black wins", (0,0,0))
         game_over = True
     while game_over:
+        pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
-                pygame.quit()
-                sys.exit()
+                rings=[]
+                markers=[]
+                bot_moves_played = 0
+                best_move = "---"
+                main()
+
 
 def main():
     global bot_moves_played, DIFFICULTY1, DIFFICULTY2, HINTS, RANDOM_BOT1, RANDOM_BOT2, MINIMAX_BOT1, MINIMAX_BOT2, MC_BOT1, MC_BOT2, HINTS, LOAD_GAME
@@ -1104,16 +1141,18 @@ def main():
                 game_state.phase1 = phase1
                 game_state.ring_count = ring_count
                 board_eval = (evaluate_board(game_state))
-                if (DIFFICULTY1==1 and MINIMAX_BOT1) or (DIFFICULTY2==1 and MINIMAX_BOT2):
+                if (DIFFICULTY1==1 and MINIMAX_BOT1 and player_turn==1) or (DIFFICULTY2==1 and MINIMAX_BOT2 and player_turn==2):
+                    print("depth 1")
                     _, best_eval, best_move = minimax_bot_move(game_state, 1)
-                elif (DIFFICULTY1==2 and MINIMAX_BOT1) or (DIFFICULTY2==2 and MINIMAX_BOT2):
+                elif (DIFFICULTY1==2 and MINIMAX_BOT1 and player_turn==1) or (DIFFICULTY2==2 and MINIMAX_BOT2 and player_turn==2):
+                    print("depth 2")
                     _, best_eval, best_move = minimax_bot_move(game_state, 2)
-                elif (MINIMAX_BOT1 or RANDOM_BOT1 or MC_BOT1) and (MINIMAX_BOT2 or RANDOM_BOT2 or MC_BOT2):
+                elif ((MINIMAX_BOT1 or RANDOM_BOT1 or MC_BOT1) and player_turn==1) and ((MINIMAX_BOT2 or RANDOM_BOT2 or MC_BOT2) and player_turn==2):
                     print("depth", 3+int(bot_moves_played>12))
                     _, best_eval, best_move = minimax_bot_move(game_state, 3+int(bot_moves_played>12))
                 else:
                     print("depth", 3+int(bot_moves_played>6))
-                    if (DIFFICULTY1==3 and MINIMAX_BOT1) or (DIFFICULTY2==3 and MINIMAX_BOT2):
+                    if (DIFFICULTY1==3 and MINIMAX_BOT1 and player_turn==1) or (DIFFICULTY2==3 and MINIMAX_BOT2 and player_turn==2):
                         _, best_eval, best_move = minimax_bot_move(game_state, 3+int(bot_moves_played>12))
                 bot_moves_played += 1
                 print("bot moved")
@@ -1155,21 +1194,28 @@ def main():
                 board_eval = (evaluate_board(game_state))
 
                 if bot_moves_played <= 6: #dynamic iteration count
-                    iters = 400
-                elif bot_moves_played <= 10:
-                    iters = 600
-                elif bot_moves_played <= 14:
-                    iters = 800
-                else:
-                    iters = 1000
-
-                if (DIFFICULTY1==1 and MC_BOT1) or (DIFFICULTY2==1 and MC_BOT2):
-                    iters = 100
-                elif (DIFFICULTY1==2 and MC_BOT1) or (DIFFICULTY2==2 and MC_BOT2):
                     iters = 300
+                elif bot_moves_played <= 10:
+                    iters = 500
+                elif bot_moves_played <= 14:
+                    iters = 700
+                elif bot_moves_played <= 20:
+                    iters = 1000
+                else:
+                    iters = 1250
+
+                if (DIFFICULTY1==1 and MC_BOT1 and player_turn==1) or (DIFFICULTY2==1 and MC_BOT2 and player_turn==2):
+                    iters = 200
+                elif (DIFFICULTY1==3 and MC_BOT1 and player_turn==1) or (DIFFICULTY2==3 and MC_BOT2 and player_turn==2):
+                    iters = int(iters / 2)
                     
                 print("iterations:",iters)
-                mcts_bot_move(game_state, iterations=iters)
+                if (DIFFICULTY1==3 and MC_BOT1 and player_turn==1) or (DIFFICULTY2==3 and MC_BOT2 and player_turn==2):
+                    print("hard bot playing")
+                    mcts_bot_move(game_state, iterations=iters, hard=True)
+                else:
+                    print("normal bot playing")
+                    mcts_bot_move(game_state, iterations=iters)
                 bot_moves_played += 1
                 check_5_line(player_turn)
 
