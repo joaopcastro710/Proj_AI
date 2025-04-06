@@ -353,10 +353,10 @@ def save_game_state(ring_count, player_turn): #Saves game state to a file if the
             # Save number of bot moves played
             f.write("BOT MOVES MADE:\n")
             f.write(f"{bot_moves_played}\n")
+        if DEBUG:
+            print("Game state saved!")
     elif DEBUG:
         print("Invalid board size for saving game state.")
-    if DEBUG:
-        print("Game state saved!")
 
 def load_game_state(): #Loads game state from file
     global rings, markers, bot_moves_played
