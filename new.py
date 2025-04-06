@@ -300,7 +300,7 @@ def get_vertices_in_line(start, end, these_rings, these_markers):
     path.append(end)
     return path
 
-def get_valid_moves(player_turn, these_rings, these_markers):
+def get_valid_moves(player_turn, these_rings, these_markers, can_gameover=True):
     valid_moves = []
     occupied_positions = {(piece_q, piece_r) for piece_q, piece_r, _ in these_rings + these_markers}
 
@@ -317,7 +317,7 @@ def get_valid_moves(player_turn, these_rings, these_markers):
             if path:
                 valid_moves.append((i, (ring_q, ring_r), (q, r), path))
 
-    if len(valid_moves)==0:
+    if len(valid_moves)==0 and can_gameover:
         check_game_over(player_turn, nomoves=True)
     return valid_moves
 
@@ -519,6 +519,8 @@ def evaluate_board(game_state): #heuristic functions, more markers is good, less
         score = -10000
     if white_rings<=2:
         score = 10000
+    if white_rings<=2 and black_rings<=2:
+        score = 0
 
     
 
@@ -624,6 +626,8 @@ def apply_move(game_state, move):
                 if player_rings:
                     i, ring_q, ring_r = random.choice(player_rings)
                     game_state.rings.pop(i)
+                    game_state.player_turn = 3 - game_state.player_turn  # Switch player turn
+                    return
                     #print(f"Player {player} formed a sequence and lost a ring at ({ring_q}, {ring_r})")
     
     #print(game_state.rings, game_state.markers)
@@ -662,7 +666,7 @@ def simulate_random_game(game_state, hard=False):
     current_state = game_state.clone()
     #print(current_state.rings, current_state.markers)
     while True:
-        valid_moves = get_valid_moves(current_state.player_turn, current_state.rings, current_state.markers)
+        valid_moves = get_valid_moves(current_state.player_turn, current_state.rings, current_state.markers, False)
         #print("valid moves: ", valid_moves)
         if not valid_moves:
             break
@@ -690,6 +694,7 @@ def simulate_random_game(game_state, hard=False):
             #print(count_white, count_black)
             if count_white < 3 or count_black < 3:
                 #print("go")
+                #print("game over")
                 break
 
     # Return wins: +1 for a win for the current player, -1 for a loss
@@ -712,7 +717,7 @@ def mcts(game_state, iterations=700, hard=False): #Implement dynamic iteration c
         # Step 2: Expansion
         if not node.is_expanded():
             move = random.choice([
-                move for move in get_valid_moves(node.game_state.player_turn, node.game_state.rings, node.game_state.markers)
+                move for move in get_valid_moves(node.game_state.player_turn, node.game_state.rings, node.game_state.markers, False)
                 if move not in [child.move for child in node.children]
             ])
             new_game_state = node.game_state.clone()
@@ -758,6 +763,7 @@ def mcts_bot_move(game_state, iterations=700, hard=False): # Implement dynamic i
         global rings, markers
         rings = game_state.rings
         markers = game_state.markers
+
         #print(f"Bot moved ring from {best_move[1]} to {best_move[2]}")
         return True
     else:
@@ -805,6 +811,7 @@ def player_move(mouse_x, mouse_y, player_turn): #If click is in my own ring, rea
 
 ####################################################################  ---GAME UTILS
 def check_5_line(player_turn):
+    check_game_over(player_turn)  # Check if game is over
     # Check if there are 5 markers of the same color aligned, if so remove a ring
 
     directions = [  # List possible sequence directions
@@ -984,13 +991,13 @@ def check_game_over(player_turn, eval=False, nomoves=False):
             count_white += 1
         else:
             count_black += 1
-    if (count_white <= 2 and count_black <= 2) or (nomoves and count_black==count_white):
+    if (count_white <= 2 and count_black <= 2) or (nomoves and count_black==count_white and eval==False):
         draw_message("Game over, it's a draw", (255,255,0))
         game_over = True
-    elif count_white <= 2 or (nomoves and count_white<count_black):
+    elif count_white <= 2 or (nomoves and count_white<count_black and eval==False):
         draw_message("Game over, White wins", (255,255,255))
         game_over = True
-    elif count_black <= 2 or (nomoves and count_black<count_white):
+    elif count_black <= 2 or (nomoves and count_black<count_white and eval==False):
         draw_message("Game over, Black wins", (0,0,0))
         game_over = True
     while game_over:
